@@ -1,0 +1,10 @@
+# SBT directories
+target/
+project/boot/
+
+# Eclipse project files
+.classpath
+.history
+.project
+.scala_dependencies
+.target/
