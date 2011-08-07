@@ -70,6 +70,8 @@ I'm developing smatrix for use in my physics research. The interfaces are subjec
 
 **Notes to self, TODO list**
 
+These are things I'm loosely planning to do, but I probably won't do them until there's a need.
+
 - Packed sparse for Sparse*Dense performance
 - Low priority implicits? (e.g., general Matrix + Matrix -> Dense operation)
 - Expose in place operations
@@ -78,4 +80,4 @@ I'm developing smatrix for use in my physics research. The interfaces are subjec
 - Test on Linux
 - Hermitian matrices, perhaps others (Triangular, Tridiagonal, Unitary)
 - Matrix solvers for sparse matrices (GMRES, BiCGSTAB)
-- Native buffers, GPU implementation
+- Native buffers (GPU implementation?)

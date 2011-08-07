@@ -3,58 +3,74 @@ package smatrix
 import collection.mutable.HashMap
 
 
-object Sparse extends SparseMultipliers with SparseBuilders
+object Sparse extends SparseBuilders with SparseAdders with SparseMultipliers
 
-trait Sparse[S <: Scalar] extends Matrix[S, Sparse] {
-  val data = new HashMap[(Int, Int), S#A]()
-  
-  override def apply(i: Int, j: Int): S#A = data.getOrElse((i, j), scalar.zero)
-  override def update(i: Int, j: Int, x: S#A) { data((i, j)) = x }
+trait Sparse[S <: Scalar, +Repr[s <: Scalar] <: Sparse[s, Repr]] extends Matrix[S, Repr] { self: Repr[S] =>
+  def definedIndices: Iterable[(Int, Int)]
+ 
   override def transform(f: S#A => S#A): this.type = {
-    for ((i, j) <- data.keys) { this(i, j) = f(this(i, j)) }
+    for ((i, j) <- definedIndices) { this(i, j) = f(this(i, j)) }
     this
   }
+    
+  override def toDense(implicit mb: MatrixBuilder[S, Dense]): Dense[S] = {
+    val ret = mb.zeros(numRows, numCols)
+    for ((i, j) <- definedIndices) { ret(i, j) = this(i, j) }
+    ret
+  }
   
-  override def map[A2, S2 <: Scalar{type A=A2}, That[T <: Scalar] >: Sparse[T] <: Matrix[T, That]]
+  override def map[A2, S2 <: Scalar{type A=A2}, That[s <: Scalar] >: Repr[s] <: Matrix[s, That]]
       (f: S#A => S2#A)(implicit scalar2: ScalarOps[S2], mb: MatrixBuilder[S2, That]): That[S2] = {
     require(f(scalar.zero) == scalar2.zero, "Map on sparse matrix must preserve zero")
     mb.map(this)(f)
   }
-
-  def toDense(implicit mb: MatrixBuilder[S, Dense]): Dense[S] = {
-    val ret = mb.zeros(numRows, numCols)
-    for ((i, j) <- data.keys) { ret(i, j) = this(i, j) }
-    ret
-  }
 }
 
 
+trait HashSparse[S <: Scalar] extends Sparse[S, HashSparse] {
+  val data = new HashMap[(Int, Int), S#A]()
+  override def definedIndices: Iterable[(Int, Int)] = data.keys
+  override def apply(i: Int, j: Int): S#A = data.getOrElse((i, j), scalar.zero)
+  override def update(i: Int, j: Int, x: S#A) { data((i, j)) = x }
+}
+
+
+trait PackedSparse[S <: Scalar] extends Sparse[S, PackedSparse] {
+  
+  val data = new HashMap[(Int, Int), S#A]()
+  override def definedIndices: Iterable[(Int, Int)] = data.keys
+  override def apply(i: Int, j: Int): S#A = data.getOrElse((i, j), scalar.zero)
+  override def update(i: Int, j: Int, x: S#A) { data((i, j)) = x }
+}
+
+
+
 trait SparseBuilders {
-  implicit def sparseBuilder[S <: Scalar](implicit so: ScalarOps[S]) = new MatrixBuilder[S, Sparse] {
+  implicit def hashSparseBuilder[S <: Scalar](implicit so: ScalarOps[S]) = new MatrixBuilder[S, HashSparse] {
     def zeros(numRows: Int, numCols: Int) = {
       MatrixDims.checkDims(numRows, numCols)
       val nr = numRows
       val nc = numCols
-      new Sparse[S] {
+      new HashSparse[S] {
         override val scalar = so
         override val numRows = nr
         override val numCols = nc
       }
     }
     
-    def duplicate(m: Sparse[S]): Sparse[S] = {
+    def duplicate(m: HashSparse[S]): HashSparse[S] = {
       val ret = zeros(m.numRows, m.numCols)
       for (k <- m.data.keys) { ret.data(k) = m.data(k) }
       ret
     }
     
-    def transpose(m: Sparse[S]): Sparse[S] = {
+    def transpose(m: HashSparse[S]): HashSparse[S] = {
       val ret = zeros(m.numCols, m.numRows)
       for ((i, j) <- m.data.keys) { ret.data((j, i)) = m.data((i, j)) }
       ret
     }
     
-    def map[S0 <: Scalar](m: Sparse[S0])(f: S0#A => S#A): Sparse[S] = {
+    def map[S0 <: Scalar](m: HashSparse[S0])(f: S0#A => S#A): HashSparse[S] = {
       val ret = zeros(m.numRows, m.numCols)
       for (k <- m.data.keys) { ret.data(k) = f(m.data(k)) }
       ret
@@ -63,9 +79,19 @@ trait SparseBuilders {
 }
 
 
+trait SparseAdders {
+  implicit def sparseSparseAdder[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixAdder[S, M, HashSparse] {
+    def addTo(neg: Boolean, m: M[S], ret: HashSparse[S]) = {
+      MatrixDims.checkAddTo(m, ret)
+      for ((i, j) <- m.definedIndices)
+        ret(i, j) = if (neg) ret.scalar.sub(ret(i, j), m(i, j)) else ret.scalar.add(ret(i, j), m(i, j))
+    }
+  }
+}
+
 trait SparseMultipliers {
-  implicit def sparseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Sparse, Dense, Dense] {
-    def maddTo(m1: Sparse[S], m2: Dense[S], ret: Dense[S]) {
+  implicit def hashSparseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, HashSparse, Dense, Dense] {
+    def maddTo(m1: HashSparse[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
       // ret_ij += \sum_k m1_ik m2_kj
       for ((i, k) <- m1.data.keys;
@@ -75,8 +101,8 @@ trait SparseMultipliers {
       }
     }
   }
-  implicit def denseSparseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, Sparse, Dense] {
-    def maddTo(m1: Dense[S], m2: Sparse[S], ret: Dense[S]) {
+  implicit def denseHashSparseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, HashSparse, Dense] {
+    def maddTo(m1: Dense[S], m2: HashSparse[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
       // ret_ij += \sum_k m1_ik m2_kj
       for ((k, j) <- m2.data.keys;

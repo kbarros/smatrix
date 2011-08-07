@@ -16,20 +16,14 @@ object MatrixDims {
     require(m1.numRows == m2.numRows && m1.numCols == m2.numCols,
         "Cannot add/subtract matrices of shape [%d, %d] +- [%d, %d]".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
   }
-  def checkAddTo(m1: MatrixDims, m2: MatrixDims, ret: MatrixDims) {
-    checkAdd(m1, m2)
-    require(
-        ret.numRows == m1.numRows &&
-        ret.numRows == m2.numRows &&
-        ret.numCols == m1.numCols &&
-        ret.numCols == m2.numCols,
-        "Cannot add/subtract matrices of shape: [%d, %d] +- [%d, %d] -> [%d, %d]".format(
-            m1.numRows, m1.numCols, m2.numRows, m2.numCols, ret.numRows, ret.numCols))
+  def checkAddTo(m: MatrixDims, ret: MatrixDims) {
+    require(m.numRows == ret.numRows && m.numCols == ret.numCols,
+        "Cannot add/subtract matrices of shape +-[%d, %d] + [%d, %d] -> [%d, %d]".format(m.numRows, m.numCols, ret.numRows, ret.numCols, ret.numRows, ret.numCols))
   }
 
   def checkMul(m1: MatrixDims, m2: MatrixDims) {
     require(m1.numCols == m2.numRows,
-            "Cannot multiply matrices of shape [%d, %d] * [%d, %d]".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
+        "Cannot multiply matrices of shape [%d, %d] * [%d, %d]".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
   }
   def checkMulTo(m1: MatrixDims, m2: MatrixDims, ret: MatrixDims) {
     checkMul(m1, m2)
@@ -43,7 +37,7 @@ object MatrixDims {
   def checkDot(m1: MatrixDims, m2: MatrixDims) {
     checkMul(m1, m2)
     require(m1.numRows == 1 && m2.numCols == 1,
-            "Dot product expects row and column vectors, found [%d, %d] * [%d, %d]".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
+        "Dot product expects row and column vectors, found [%d, %d] * [%d, %d]".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
   }
 }
 
@@ -66,6 +60,12 @@ trait Matrix[S <: Scalar, +Repr[S2 <: Scalar] <: Matrix[S2, Repr]] extends Matri
   
   def duplicate[That[S <: Scalar] >: Repr[S] <: Matrix[S, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     mb.duplicate(this)
+  }
+  
+  def toDense(implicit mb: MatrixBuilder[S, Dense]): Dense[S] = {
+    val ret = mb.zeros(numRows, numCols)
+    for (j <- 0 until numCols; i <- 0 until numRows) { ret(i, j) = this(i, j) }
+    ret
   }
   
   // The parameter A2 is for type inference only
@@ -122,21 +122,25 @@ trait Matrix[S <: Scalar, +Repr[S2 <: Scalar] <: Matrix[S2, Repr]] extends Matri
 
   def +[Repr1[S <: Scalar] >: Repr[S], Repr2[S <: Scalar] <: Matrix[S, Repr2], Repr3[S <: Scalar] <: Matrix[S, Repr3]]
         (that: Repr2[S])
-        (implicit ma: MatrixAdder[S, Repr1, Repr2, Repr3],
+        (implicit ma1: MatrixAdder[S, Repr1, Repr3],
+                  ma2: MatrixAdder[S, Repr2, Repr3],
                   mb: MatrixBuilder[S, Repr3]): Repr3[S] = {
     MatrixDims.checkAdd(this, that)
     val ret = mb.zeros(numRows, numCols)
-    ma.addTo(false, this, that, ret)
+    ma1.addTo(neg=false, this, ret)
+    ma2.addTo(neg=false, that, ret)
     ret
   }
 
   def -[Repr1[S <: Scalar] >: Repr[S], Repr2[S <: Scalar] <: Matrix[S, Repr2], Repr3[S <: Scalar] <: Matrix[S, Repr3]]
         (that: Repr2[S])
-        (implicit ma: MatrixAdder[S, Repr1, Repr2, Repr3],
+        (implicit ma1: MatrixAdder[S, Repr1, Repr3],
+                  ma2: MatrixAdder[S, Repr2, Repr3],
                   mb: MatrixBuilder[S, Repr3]): Repr3[S] = {
     MatrixDims.checkAdd(this, that)
     val ret = mb.zeros(numRows, numCols)
-    ma.addTo(true, this, that, ret)
+    ma1.addTo(neg=false, this, ret)
+    ma2.addTo(neg=true,  that, ret)
     ret
   }
   
@@ -186,11 +190,11 @@ trait MatrixBuilder[S <: Scalar, Repr[_ <: Scalar]] {
   def map[S0 <: Scalar](m: Repr[S0])(f: S0#A => S#A): Repr[S]
 }
 
-trait MatrixAdder[S <: Scalar, Repr1[_ <: Scalar], Repr2[_ <: Scalar], Repr3[_ <: Scalar]] {
-  def addTo(sub: Boolean, m1: Repr1[S], m2: Repr2[S], ret: Repr3[S])
+trait MatrixAdder[S <: Scalar, -Repr1[_ <: Scalar], Repr2[_ <: Scalar]] {
+  def addTo(neg: Boolean, m: Repr1[S], ret: Repr2[S])
 }
 
-trait MatrixMultiplier[S <: Scalar, Repr1[_ <: Scalar], Repr2[_ <: Scalar], Repr3[_ <: Scalar]] {
+trait MatrixMultiplier[S <: Scalar, -Repr1[_ <: Scalar], -Repr2[_ <: Scalar], Repr3[_ <: Scalar]] {
   def maddTo(m1: Repr1[S], m2: Repr2[S], ret: Repr3[S])
 }
 

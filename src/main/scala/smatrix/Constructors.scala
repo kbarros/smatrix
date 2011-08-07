@@ -60,7 +60,7 @@ class Constructors[S <: Scalar]() {
   // --------------------------------------
   // Sparse constructors
   
-  def sparse(numRows: Int, numCols: Int)(implicit mb: MatrixBuilder[S, Sparse]): Sparse[S] = {
+  def sparse(numRows: Int, numCols: Int)(implicit mb: MatrixBuilder[S, HashSparse]): HashSparse[S] = {
     mb.zeros(numRows, numCols)
   }
 

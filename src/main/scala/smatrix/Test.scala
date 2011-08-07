@@ -21,4 +21,7 @@ object Test extends App {
   s(1, 3) = 2-I
   println(s * col(1, 1, 1, 2) - col(2+I, 4-2*I))
   println("should be zero\n\n")
+  
+//  val s2 = sparse(2, 2)
+//  s + s2
 }

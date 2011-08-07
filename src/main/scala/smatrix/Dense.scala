@@ -106,12 +106,12 @@ trait DenseBuilders {
 
 
 trait DenseAdders {
-  implicit def denseDenseAdder[S <: Scalar] = new MatrixAdder[S, Dense, Dense, Dense] {
-    def addTo(sub: Boolean, m1: Dense[S], m2: Dense[S], ret: Dense[S]) = {
-      MatrixDims.checkAddTo(m1, m2, ret)
+  implicit def denseDenseAdder[S <: Scalar] = new MatrixAdder[S, Dense, Dense] {
+    def addTo(neg: Boolean, m: Dense[S], ret: Dense[S]) = {
+      MatrixDims.checkAdd(m, ret)
       for (i <- 0 until ret.numRows;
            j <- 0 until ret.numCols) {
-        ret(i, j) = if (sub) ret.scalar.sub(m1(i, j), m2(i, j)) else ret.scalar.add(m1(i, j), m2(i, j))
+        ret(i, j) = if (neg) ret.scalar.sub(ret(i, j), m(i, j)) else ret.scalar.add(ret(i, j), m(i, j))
       }
     }
   }
