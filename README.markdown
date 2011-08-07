@@ -1,7 +1,7 @@
 smatrix: *fast matrices in scala*
 =================================
 
-A Scala library for high performance matrix computation, with integration to native BLAS and LAPACK libraries.
+A Scala library for high performance matrix computation, with support for native BLAS and LAPACK libraries.
 
 
 Features
@@ -70,7 +70,6 @@ I'm developing smatrix for use in my physics research. The interfaces are subjec
 
 **Notes to self, TODO list**
 
-- Rename `multi` -> `maddTo` (also, use consistent parameter convention)
 - Packed sparse for Sparse*Dense performance
 - Low priority implicits? (e.g., general Matrix + Matrix -> Dense operation)
 - Expose in place operations

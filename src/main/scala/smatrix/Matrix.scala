@@ -104,7 +104,7 @@ trait Matrix[S <: Scalar, +Repr[S2 <: Scalar] <: Matrix[S2, Repr]] extends Matri
                   mb: MatrixBuilder[S, Repr3]): S#A = {
     MatrixDims.checkDot(this, that)
     val m3 = mb.zeros(1, 1)
-    mm.mulTo(this, that, m3)
+    mm.maddTo(this, that, m3)
     val ret = m3(0, 0)
     m3.dispose()
     ret
@@ -116,7 +116,7 @@ trait Matrix[S <: Scalar, +Repr[S2 <: Scalar] <: Matrix[S2, Repr]] extends Matri
                   mb: MatrixBuilder[S, Repr3]): Repr3[S] = {
     MatrixDims.checkMul(this, that)
     val ret = mb.zeros(numRows, that.numCols)
-    mm.mulTo(this, that, ret)
+    mm.maddTo(this, that, ret)
     ret
   }
 
@@ -191,6 +191,6 @@ trait MatrixAdder[S <: Scalar, Repr1[_ <: Scalar], Repr2[_ <: Scalar], Repr3[_ <
 }
 
 trait MatrixMultiplier[S <: Scalar, Repr1[_ <: Scalar], Repr2[_ <: Scalar], Repr3[_ <: Scalar]] {
-  def mulTo(m1: Repr1[S], m2: Repr2[S], ret: Repr3[S])
+  def maddTo(m1: Repr1[S], m2: Repr2[S], ret: Repr3[S])
 }
 

@@ -120,14 +120,13 @@ trait DenseAdders {
 
 trait DenseMultipliers {
   implicit def denseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, Dense, Dense] {
-    def mulTo(m1: Dense[S], m2: Dense[S], ret: Dense[S]) {
+    def maddTo(m1: Dense[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
       if (ret.netlib == null) {
-        ret.transform(_ => ret.scalar.zero)
         for (i <- 0 until ret.numRows;
              k <- 0 until m1.numCols;
              j <- 0 until ret.numCols) {
-          ret.scalar.madd(ret.data, ret.index(i, j), m1.data, m1.index(i, k), m2.data, m2.index(k, j))
+          ret.scalar.maddTo(m1.data, m1.index(i, k), m2.data, m2.index(k, j), ret.data, ret.index(i, j))
         }
       }
       else {

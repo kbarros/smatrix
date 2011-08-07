@@ -40,11 +40,11 @@ object ScalarOps {
     def components = 1
     def read(data: Data, i: Int): Float = data(i)
     def write(data: Data, i: Int, x: Float): Unit = data(i) = x
-    override def madd(data0: Data, i0: Int, data1: Data, i1: Int, x2: Float) {
-      data0(i0) += data1(i1) * x2
+    override def maddTo(d1: Data, i1: Int, x2: Float, d3: Data, i3: Int) {
+      d3(i3) += d1(i1) * x2
     }
-    override def madd(data0: Data, i0: Int, data1: Data, i1: Int, data2: Data, i2: Int) {
-      data0(i0) += data1(i1) * data2(i2)
+    override def maddTo(d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
+      d3(i3) += d1(i1) * d2(i2)
     }
   }
 
@@ -61,11 +61,11 @@ object ScalarOps {
     def components = 1
     def read(data: Data, i: Int): Double = data(i)
     def write(data: Data, i: Int, x: Double): Unit = data(i) = x
-    override def madd(data0: Data, i0: Int, data1: Data, i1: Int, x2: Double) {
-      data0(i0) += data1(i1) * x2
+    override def maddTo(d1: Data, i1: Int, x2: Double, d3: Data, i3: Int) {
+      d3(i3) += d1(i1) * x2
     }
-    override def madd(data0: Data, i0: Int, data1: Data, i1: Int, data2: Data, i2: Int) {
-      data0(i0) += data1(i1) * data2(i2)
+    override def maddTo(d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
+      d3(i3) += d1(i1) * d2(i2)
     }
   }
 
@@ -85,19 +85,19 @@ object ScalarOps {
       data(2*i+0) = x.re
       data(2*i+1) = x.im
     }
-    override def madd(data0: Data, i0: Int, data1: Data, i1: Int, x2: Complexf) {
-      val x1_re = data1(2*i1+0)
-      val x1_im = data1(2*i1+1)
-      data0(2*i0+0) += x1_re*x2.re - x1_im*x2.im
-      data0(2*i0+1) += x1_re*x2.im + x1_im*x2.re
+    override def maddTo(d1: Data, i1: Int, x2: Complexf, d3: Data, i3: Int) {
+      val x1_re = d1(2*i1+0)
+      val x1_im = d1(2*i1+1)
+      d3(2*i3+0) += x1_re*x2.re - x1_im*x2.im
+      d3(2*i3+1) += x1_re*x2.im + x1_im*x2.re
     }
-    override def madd(data0: Data, i0: Int, data1: Data, i1: Int, data2: Data, i2: Int) {
-      val x1_re = data1(2*i1+0)
-      val x1_im = data1(2*i1+1)
-      val x2_re = data2(2*i2+0)
-      val x2_im = data2(2*i2+1)
-      data0(2*i0+0) += x1_re*x2_re - x1_im*x2_im
-      data0(2*i0+1) += x1_re*x2_im + x1_im*x2_re
+    override def maddTo(d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
+      val x1_re = d1(2*i1+0)
+      val x1_im = d1(2*i1+1)
+      val x2_re = d2(2*i2+0)
+      val x2_im = d2(2*i2+1)
+      d3(2*i3+0) += x1_re*x2_re - x1_im*x2_im
+      d3(2*i3+1) += x1_re*x2_im + x1_im*x2_re
     }
   }
 
@@ -117,19 +117,19 @@ object ScalarOps {
       data(2*i+0) = x.re
       data(2*i+1) = x.im
     }
-    override def madd(data0: Data, i0: Int, data1: Data, i1: Int, x2: Complexd) {
-      val x1_re = data1(2*i1+0)
-      val x1_im = data1(2*i1+1)
-      data0(2*i0+0) += x1_re*x2.re - x1_im*x2.im
-      data0(2*i0+1) += x1_re*x2.im + x1_im*x2.re
+    override def maddTo(d1: Data, i1: Int, x2: Complexd, d3: Data, i3: Int) {
+      val x1_re = d1(2*i1+0)
+      val x1_im = d1(2*i1+1)
+      d3(2*i3+0) += x1_re*x2.re - x1_im*x2.im
+      d3(2*i3+1) += x1_re*x2.im + x1_im*x2.re
     }
-    override def madd(data0: Data, i0: Int, data1: Data, i1: Int, data2: Data, i2: Int) {
-      val x1_re = data1(2*i1+0)
-      val x1_im = data1(2*i1+1)
-      val x2_re = data2(2*i2+0)
-      val x2_im = data2(2*i2+1)
-      data0(2*i0+0) += x1_re*x2_re - x1_im*x2_im
-      data0(2*i0+1) += x1_re*x2_im + x1_im*x2_re
+    override def maddTo(d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
+      val x1_re = d1(2*i1+0)
+      val x1_im = d1(2*i1+1)
+      val x2_re = d2(2*i2+0)
+      val x2_im = d2(2*i2+1)
+      d3(2*i3+0) += x1_re*x2_re - x1_im*x2_im
+      d3(2*i3+1) += x1_re*x2_im + x1_im*x2_re
     }
   }
 }
@@ -149,11 +149,18 @@ trait GenScalarOps[@specialized(Float, Double) A, @specialized(Float, Double) Ra
   def components: Int
   def read(data: Data, i: Int): A
   def write(data: Data, i: Int, x: A)
-  def madd(data0: Data, i0: Int, data1: Data, i1: Int, x2: A) {
-    write(data0, i0, add(read(data0, i0), mul(read(data1, i1), x2)))
+
+  def maddTo(d1: Data, i1: Int, x2: A, d3: Data, i3: Int) {
+    val x1 = read(d1, i1)
+    val x3 = read(d3, i3)
+    write(d3, i3, add(mul(x1, x2), x3))
   }
-  def madd(data0: Data, i0: Int, data1: Data, i1: Int, data2: Data, i2: Int) {
-    write(data0, i0, add(read(data0, i0), mul(read(data1, i1), read(data2, i2))))
+  
+  def maddTo(d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
+    val x1 = read(d1, i1)
+    val x2 = read(d2, i2)
+    val x3 = read(d3, i3)
+    write(d3, i3, add(mul(x1, x2), x3))
   }
 }
 trait ScalarOps[S <: Scalar] extends GenScalarOps[S#A, S#Raw, S#Buf]

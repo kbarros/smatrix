@@ -65,26 +65,24 @@ trait SparseBuilders {
 
 trait SparseMultipliers {
   implicit def sparseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Sparse, Dense, Dense] {
-    def mulTo(m1: Sparse[S], m2: Dense[S], ret: Dense[S]) {
+    def maddTo(m1: Sparse[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      ret.transform(_ => ret.scalar.zero)
-      // ret_ij = \sum_k m1_ik m2_kj
+      // ret_ij += \sum_k m1_ik m2_kj
       for ((i, k) <- m1.data.keys;
            val m1_ik = m1.apply(i, k); 
            j <- 0 until ret.numCols) {
-        ret.scalar.madd(ret.data, ret.index(i, j), m2.data, m2.index(k, j), m1_ik)
+        ret.scalar.maddTo(m2.data, m2.index(k, j), m1_ik, ret.data, ret.index(i, j))
       }
     }
   }
   implicit def denseSparseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, Sparse, Dense] {
-    def mulTo(m1: Dense[S], m2: Sparse[S], ret: Dense[S]) {
+    def maddTo(m1: Dense[S], m2: Sparse[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      ret.transform(_ => ret.scalar.zero)
-      // ret_ij = \sum_k m1_ik m2_kj
+      // ret_ij += \sum_k m1_ik m2_kj
       for ((k, j) <- m2.data.keys;
            val m2_kj = m1.apply(k, j); 
            i <- 0 until ret.numRows) {
-        ret.scalar.madd(ret.data, ret.index(i, j), m1.data, m1.index(i, k), m2_kj)
+        ret.scalar.maddTo(m1.data, m1.index(i, k), m2_kj, ret.data, ret.index(i, j))
       }
     }
   }
