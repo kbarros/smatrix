@@ -4,6 +4,8 @@ import java.nio.{DoubleBuffer, FloatBuffer}
 import java.nio.Buffer
 
 
+// TODO: remember why ScalarOps can't be rolled into Scalar
+
 object Scalar {
   trait RealTyp    extends Scalar
   trait ComplexTyp extends Scalar

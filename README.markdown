@@ -68,11 +68,10 @@ A Work in Progress
 
 I'm developing smatrix for use in my physics research. The interfaces are subject to change. Your suggestions and contributions are welcome.
 
-**Notes to self, TODO list**
+**TODO list**
 
-These are things I'm loosely planning to do, but I probably won't do them until there's a need.
+Things I'm planning to do once there's a need.
 
-- Packed sparse for Sparse*Dense performance
 - Expose gemm operation
 - Get specialization working with parallel "bare" heirarchy
 - Add ATLAS backend; JNA name remapping? Test on Linux

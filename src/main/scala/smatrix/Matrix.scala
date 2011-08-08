@@ -4,7 +4,7 @@ package smatrix
 object Matrix {
   def addTo[S <: Scalar, M1[_] <: MatrixDims, M2[_] <: MatrixDims]
         (neg: Boolean, m: M1[S], ret: M2[S])
-        (implicit ma: MatrixAdder[S, M1, M2]) {
+        (implicit ma: MatrixSingleAdder[S, M1, M2]) {
     MatrixDims.checkAddTo(m, ret)
     ma.addTo(neg, m, ret)
   }
@@ -93,25 +93,21 @@ trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixD
 
   def +[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (that: M2[S])
-        (implicit ma1: MatrixAdder[S, M1, M3],
-                  ma2: MatrixAdder[S, M2, M3],
+        (implicit ma: MatrixAdder[S, M1, M2, M3],
                   mb: MatrixBuilder[S, M3]): M3[S] = {
     MatrixDims.checkAdd(this, that)
     val ret = mb.zeros(numRows, numCols)
-    ma1.addTo(neg=false, this, ret)
-    ma2.addTo(neg=false, that, ret)
+    ma.addTo(sub=false, this, that, ret)
     ret
   }
 
   def -[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (that: M2[S])
-        (implicit ma1: MatrixAdder[S, M1, M3],
-                  ma2: MatrixAdder[S, M2, M3],
+        (implicit ma: MatrixAdder[S, M1, M2, M3],
                   mb: MatrixBuilder[S, M3]): M3[S] = {
     MatrixDims.checkAdd(this, that)
     val ret = mb.zeros(numRows, numCols)
-    ma1.addTo(neg=false, this, ret)
-    ma2.addTo(neg=true,  that, ret)
+    ma.addTo(sub=true, this, that, ret)
     ret
   }
   
@@ -154,17 +150,25 @@ trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixD
 }
 
 
-trait MatrixBuilder[S <: Scalar, Repr[_ <: Scalar]] {
+abstract class MatrixBuilder[S <: Scalar, Repr[_ <: Scalar]] {
   def zeros(numRows: Int, numCols: Int): Repr[S]
   def duplicate(m: Repr[S]): Repr[S]
   def transpose(m: Repr[S]): Repr[S]
   def map[S0 <: Scalar](m: Repr[S0])(f: S0#A => S#A): Repr[S]
 }
 
-trait MatrixAdder[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar]] {
+abstract class MatrixSingleAdder[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar]] {
   def addTo(neg: Boolean, m: M1[S], ret: M2[S])
 }
 
-trait MatrixMultiplier[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[_ <: Scalar]] {
+class MatrixAdder[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[_ <: Scalar]]
+    (a13: MatrixSingleAdder[S, M1, M3], a23: MatrixSingleAdder[S, M2, M3]) {
+  def addTo(sub: Boolean, m1: M1[S], m2: M2[S], ret: M3[S]) {
+    a13.addTo(neg=false, m1, ret)
+    a23.addTo(neg=sub, m2, ret)
+  }
+}
+
+abstract class MatrixMultiplier[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[_ <: Scalar]] {
   def maddTo(m1: M1[S], m2: M2[S], ret: M3[S])
 }

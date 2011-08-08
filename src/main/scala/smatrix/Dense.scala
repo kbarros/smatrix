@@ -107,7 +107,7 @@ trait DenseBuilders {
 
 
 trait DenseAdders {
-  implicit def denseDenseAdder[S <: Scalar] = new MatrixAdder[S, Dense, Dense] {
+  implicit def denseIntoDenseAdder[S <: Scalar] = new MatrixSingleAdder[S, Dense, Dense] {
     def addTo(neg: Boolean, m: Dense[S], ret: Dense[S]) = {
       MatrixDims.checkAdd(m, ret)
       for (i <- 0 until ret.numRows;
@@ -116,6 +116,9 @@ trait DenseAdders {
       }
     }
   }
+  
+  implicit def denseDenseAdder[S <: Scalar] =
+    new MatrixAdder[S, Dense, Dense, Dense](denseIntoDenseAdder, denseIntoDenseAdder)
 }
 
 
