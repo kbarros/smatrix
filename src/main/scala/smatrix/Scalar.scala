@@ -1,8 +1,8 @@
 package smatrix
 
-
 import java.nio.{DoubleBuffer, FloatBuffer}
 import java.nio.Buffer
+
 
 object Scalar {
   trait RealTyp    extends Scalar

@@ -50,12 +50,12 @@ trait Dense[S <: Scalar] extends Matrix[S, Dense] {
       sys.error("")
     }
   }
-  def update[That[S <: Scalar] <: Matrix[S, That]](i: Int, _slice: DenseSlice, that: That[S]) {
+  def update[That[s <: Scalar] <: Matrix[s, That]](i: Int, _slice: DenseSlice, that: That[S]) {
     require(that.numRows == 1 && numCols == that.numCols, "Cannot perform matrix assignment of shape: [%d, %d] -> [%d, %d](%d, ::)".format(
       that.numRows, that.numCols, numRows, numCols, i))
     for (j <- 0 until numCols) this(i, j) = that(0, j)
   }
-  def update[That[S <: Scalar] <: Matrix[S, That]](_slice: DenseSlice, j: Int, that: That[S]) {
+  def update[That[s <: Scalar] <: Matrix[s, That]](_slice: DenseSlice, j: Int, that: That[S]) {
     require(that.numCols == 1 && numRows == that.numRows, "Cannot perform matrix assignment of shape: [%d, %d] -> [%d, %d](::, %d)".format(
       that.numRows, that.numCols, numRows, numCols, j))
     for (i <- 0 until numRows) this(i, j) = that(i, 0)
