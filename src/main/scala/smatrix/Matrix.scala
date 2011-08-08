@@ -1,57 +1,25 @@
 package smatrix
 
 
-object MatrixDims {
-  def checkDims(numRows: Int, numCols: Int) {
-    require(numRows > 0 && numCols > 0,
-        "Cannot build matrix with non-positive dimensions [%d, %d]".format(numRows, numCols))
-  }
-  
-  def checkKey(m: MatrixDims, i: Int, j: Int) {
-    require(0 <= i && i < m.numRows && 0 <= j && j < m.numCols,
-        "Matrix indices out of bounds: [%d %d](%d %d)".format(m.numRows, m.numCols, i, j))
-  }
-  
-  def checkAdd(m1: MatrixDims, m2: MatrixDims) {
-    require(m1.numRows == m2.numRows && m1.numCols == m2.numCols,
-        "Cannot add/subtract matrices of shape [%d, %d] +- [%d, %d]".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
-  }
-  def checkAddTo(m: MatrixDims, ret: MatrixDims) {
-    require(m.numRows == ret.numRows && m.numCols == ret.numCols,
-        "Cannot add/subtract matrices of shape +-[%d, %d] + [%d, %d] -> [%d, %d]".format(m.numRows, m.numCols, ret.numRows, ret.numCols, ret.numRows, ret.numCols))
+object Matrix {
+  def addTo[S <: Scalar, M1[_] <: MatrixDims, M2[_] <: MatrixDims]
+        (neg: Boolean, m: M1[S], ret: M2[S])
+        (implicit ma: MatrixAdder[S, M1, M2]) {
+    MatrixDims.checkAddTo(m, ret)
+    ma.addTo(neg, m, ret)
   }
 
-  def checkMul(m1: MatrixDims, m2: MatrixDims) {
-    require(m1.numCols == m2.numRows,
-        "Cannot multiply matrices of shape [%d, %d] * [%d, %d]".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
+  def maddTo[S <: Scalar, M1[_] <: MatrixDims, M2[_] <: MatrixDims, M3[_] <: MatrixDims]
+        (m1: M1[S], m2: M2[S], ret: M3[S])
+        (implicit mm: MatrixMultiplier[S, M1, M2, M3]) {
+    MatrixDims.checkMulTo(m1, m2, ret)
+    mm.maddTo(m1, m2, ret)
   }
-  def checkMulTo(m1: MatrixDims, m2: MatrixDims, ret: MatrixDims) {
-    checkMul(m1, m2)
-    require(
-        ret.numRows == m1.numRows &&
-        m1.numCols == m2.numRows &&
-        m2.numCols == ret.numCols, "Cannot multiply matrices of shape: [%d, %d] * [%d, %d] -> [%d, %d]".format(
-            m1.numRows, m1.numCols, m2.numRows, m2.numCols, ret.numRows, ret.numCols))
-  }
-  
-  def checkDot(m1: MatrixDims, m2: MatrixDims) {
-    checkMul(m1, m2)
-    require(m1.numRows == 1 && m2.numCols == 1,
-        "Dot product expects row and column vectors, found [%d, %d] * [%d, %d]".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
-  }
-}
-
-
-trait MatrixDims {
-  def numRows: Int
-  def numCols: Int
 }
 
 
 // TODO: Specialize S#A for apply/update methods
-
 // Eclipse crashes when "s" parameter is renamed, and file is saved 
-
 trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixDims { self: Repr[S] =>
   val scalar: ScalarOps[S]
   

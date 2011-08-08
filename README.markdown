@@ -73,11 +73,9 @@ I'm developing smatrix for use in my physics research. The interfaces are subjec
 These are things I'm loosely planning to do, but I probably won't do them until there's a need.
 
 - Packed sparse for Sparse*Dense performance
-- Low priority implicits? (e.g., general Matrix + Matrix -> Dense operation)
-- Expose in place operations
+- Expose gemm operation
 - Get specialization working with parallel "bare" heirarchy
-- Add ATLAS backend; JNA name remapping?
-- Test on Linux
+- Add ATLAS backend; JNA name remapping? Test on Linux
 - Hermitian matrices, perhaps others (Triangular, Tridiagonal, Unitary)
 - Matrix solvers for sparse matrices (GMRES, BiCGSTAB)
 - Native buffers (GPU implementation?)

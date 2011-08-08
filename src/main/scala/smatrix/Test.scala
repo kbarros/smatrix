@@ -2,6 +2,7 @@ package smatrix
 
 
 object Test extends App {
+  import smatrix._
   import Constructors.complexDbl._
   val m = dense(4, 4)
 
@@ -22,6 +23,7 @@ object Test extends App {
   println(s * col(1, 1, 1, 2) - col(2+I, 4-2*I))
   println("should be zero\n\n")
   
-  val s2 = sparse(2, 2)
-  s + s2
+  val s2 = sparse(2, 4)
+  println(s + s2)
+  
 }
