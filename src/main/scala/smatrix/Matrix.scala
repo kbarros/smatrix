@@ -21,6 +21,7 @@ object Matrix {
 // TODO: Specialize S#A for apply/update methods
 // Eclipse crashes when "s" parameter is renamed, and file is saved 
 trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixDims { self: Repr[S] =>
+  val description: String
   val scalar: ScalarOps[S]
   
   def apply(i: Int, j: Int): S#A
@@ -135,18 +136,18 @@ trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixD
       sb.append(str)
       sb.append(Seq.fill(margin2)(' ').mkString)
     }
+    
+    sb.append("[ %dx%d Matrix (%s) ]\n".format(numRows, numCols, description))
     for (i <- 0 until math.min(numRows, maxRows)) {
       for (j <- 0 until math.min(numCols, maxCols)) {
         writeStr(this(i, j).toString)
       }
       if (i == 0 && numCols > maxCols)
-        sb.append(" ... (%d Cols)".format(numCols))
+        sb.append(" ...")
       sb.append("\n")
     }
     if (numRows > maxRows) {
       writeStr(":")
-      sb.append("\n")
-      writeStr("(%d Rows)".format(numRows))
     }
     sb.toString
   }

@@ -9,6 +9,7 @@ object Dense extends DenseBuilders with DenseAdders with DenseMultipliers with D
 
 
 trait Dense[S <: Scalar] extends Matrix[S, Dense] {
+  val description = "Dense"
   val netlib: Netlib[S]
   val data: RawData[S#Raw, S#Buf]
 
