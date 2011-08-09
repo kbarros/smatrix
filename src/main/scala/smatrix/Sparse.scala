@@ -193,15 +193,63 @@ trait SparseMultipliersLowPriority {
     }
   }
 }
+
 trait SparseMultipliers extends SparseMultipliersLowPriority {
   implicit def packedSparseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, PackedSparse, Dense, Dense] {
     def maddTo(m1: PackedSparse[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      // ret_ij += \sum_k m1_ik m2_kj
-      for (i <- 0 until m1.numRows;
-           (k, idx1) <- m1.definedCols(i).zipWithIndex;
-           j <- 0 until ret.numCols) {
-        ret.scalar.maddTo(m1.data, idx1+m1.definedColsAccum(i), m2.data, m2.index(k, j), ret.data, ret.index(i, j))
+//      // Unoptimized Code      
+//      for (i <- 0 until m1.numRows;
+//           iter <- m1.definedCols(i).indices;
+//           val idx1 = iter + m1.definedColsAccum(i);
+//           val k = m1.definedCols(i)(iter);
+//           j <- 0 until ret.numCols) {
+//        ret.scalar.maddTo(m1.data, idx1, m2.data, m2.index(k, j), ret.data, ret.index(i, j))
+//      }
+      var i = 0
+      while (i < m1.numRows) {
+        var iter = 0
+        while (iter < m1.definedCols(i).size) {
+          val idx1 = iter + m1.definedColsAccum(i)
+          val k = m1.definedCols(i)(iter)
+          var j = 0
+          while (j < ret.numCols) {
+            //  m1_ik m2_kj -> ret_ij
+            ret.scalar.maddTo(m1.data, idx1, m2.data, m2.index(k, j), ret.data, ret.index(i, j))
+            j += 1
+          }
+          iter += 1
+        }
+        i += 1
+      }
+    }
+  }
+  implicit def densePackedSparseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, PackedSparse, Dense] {
+    def maddTo(m1: Dense[S], m2: PackedSparse[S], ret: Dense[S]) {
+      MatrixDims.checkMulTo(m1, m2, ret)
+//      // Unoptimized code
+//      for (k <- 0 until m1.numCols;
+//           iter <- m2.definedCols(k).indices;
+//           val idx2 = iter + m2.definedColsAccum(k);
+//           val j = m2.definedCols(k)(iter);
+//           i <- 0 until ret.numRows) {
+//        ret.scalar.maddTo(m1.data, m1.index(i, k), m2.data, idx2, ret.data, ret.index(i, j))
+//      }
+      var k = 0
+      while (k < m1.numCols) {
+        var iter = 0
+        while (iter < m2.definedCols(k).size) {
+          val idx2 = iter + m2.definedColsAccum(k)
+          val j = m2.definedCols(k)(iter)
+          var i = 0
+          while (i < ret.numRows) {
+            //  m1_ik m2_kj -> ret_ij
+            ret.scalar.maddTo(m1.data, m1.index(i, k), m2.data, idx2, ret.data, ret.index(i, j))
+            i += 1
+          }
+          iter += 1
+        }
+        k += 1
       }
     }
   }

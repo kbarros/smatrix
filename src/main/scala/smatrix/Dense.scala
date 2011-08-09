@@ -141,8 +141,10 @@ trait DenseMultipliers {
   implicit def denseDenseDotter[S <: Scalar] = new MatrixDotter[S, Dense, Dense] {
     def dotTo(m1: Dense[S], m2: Dense[S], ret: RawData[S#Raw, S#Buf]) {
       MatrixDims.checkDot(m1, m2)
-      for (i <- 0 until m1.numCols) {
+      var i = 0
+      while (i < m1.numCols) {
         m1.scalar.maddTo(m1.data, i, m2.data, i, ret, 0)
+        i += 1
       }
     }
   }
