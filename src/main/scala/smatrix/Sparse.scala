@@ -9,17 +9,11 @@ object Sparse extends SparseBuilders with SparseAdders with SparseMultipliers
 
 abstract class Sparse[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Sparse[s, Repr]]
     (numRows: Int, numCols: Int) extends Matrix[S, Repr](numRows, numCols) { self: Repr[S] =>
-  def definedIndices: Iterable[(Int, Int)]
 
   override def transform(f: S#A => S#A): this.type = {
+    require(f(scalar.zero) == scalar.zero, "Transform on sparse matrix must preserve zero")
     for ((i, j) <- definedIndices) { this(i, j) = f(this(i, j)) }
     this
-  }
-
-  override def toDense(implicit mb: MatrixBuilder[S, Dense]): Dense[S] = {
-    val ret = mb.zeros(numRows, numCols)
-    for ((i, j) <- definedIndices) { ret(i, j) = this(i, j) }
-    ret
   }
 
   override def map[A2, S2 <: Scalar{type A=A2}, That[s <: Scalar] >: Repr[s] <: Matrix[s, That]]

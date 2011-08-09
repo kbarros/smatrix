@@ -45,6 +45,10 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
    */
   def dispose() {}
   
+  /** The matrix indices whose elements may be nonzero
+   */
+  def definedIndices: Iterable[(Int, Int)] = for (i <- 0 until numRows; j <- 0 until numCols) yield (i, j)
+  
   /** Creates a copy of this matrix.
    */
   def duplicate[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
@@ -55,10 +59,10 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
    */
   def toDense(implicit mb: MatrixBuilder[S, Dense]): Dense[S] = {
     val ret = mb.zeros(numRows, numCols)
-    for (j <- 0 until numCols; i <- 0 until numRows) { ret(i, j) = this(i, j) }
+    for ((i, j) <- definedIndices) { ret(i, j) = this(i, j) }
     ret
   }
-  
+
   /** Builds a new matrix by applying a function to all elements of this matrix.
    */
   // The parameter A2 is for type inference only
@@ -107,7 +111,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
    */
   def norm2: S#A = {
     var ret = scalar.zero
-    for (i <- 0 until numRows; j <- 0 until numCols) {
+    for ((i, j) <- definedIndices) {
       val x = this(i, j)
       ret = scalar.add(ret, scalar.mul(x, scalar.conj(x)))
     }
@@ -118,7 +122,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
    */
   def sum: S#A = {
     var ret = scalar.zero
-    for (i <- 0 until numRows; j <- 0 until numCols) {
+    for ((i, j) <- definedIndices) {
       ret = scalar.add(ret, this(i, j))
     }
     ret
@@ -127,9 +131,8 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   /** Copies the matrix elements to an array in column major order (rows change most rapidly).
    */
   def toArray(implicit m: Manifest[S#A]): Array[S#A] = {
-    val ret = new Array[S#A](numRows*numCols)
-    for (j <- 0 until numCols;
-         i <- 0 until numRows) {
+    val ret = Array.fill[S#A](numRows*numCols)(scalar.zero)
+    for ((i, j) <- definedIndices) {
       ret(i + j*numRows) = this(i, j)
     }
     ret
