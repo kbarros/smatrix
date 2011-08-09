@@ -20,13 +20,13 @@ object Matrix {
 
 // TODO: Specialize S#A for apply/update methods
 // Eclipse crashes when "s" parameter is renamed, and file is saved 
-trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixDims { self: Repr[S] =>
+abstract class Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]]
+    (val numRows: Int, val numCols: Int)(implicit val scalar: ScalarOps[S]) 
+    extends MatrixDims { self: Repr[S] =>
+  MatrixDims.checkDims(numRows, numCols)
+
   /** A description of the matrix type. */
   val description: String
-  
-  /** Scalar operations associated with the type of the matrix elements
-   */
-  val scalar: ScalarOps[S]
   
   /** Gets the value of this matrix at given row and column indices.
    */

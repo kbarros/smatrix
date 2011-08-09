@@ -7,8 +7,9 @@ import scala.collection.mutable.ArrayBuffer
 object Sparse extends SparseBuilders with SparseAdders with SparseMultipliers
 
 
-// TODO: remove Repr parameter?
-trait Sparse[S <: Scalar, +Repr[s <: Scalar] <: Sparse[s, Repr]] extends Matrix[S, Repr] { self: Repr[S] =>
+abstract class Sparse[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Sparse[s, Repr]]
+    (numRows: Int, numCols: Int)
+    extends Matrix[S, Repr](numRows, numCols) { self: Repr[S] =>
   def definedIndices: Iterable[(Int, Int)]
 
   override def transform(f: S#A => S#A): this.type = {
@@ -30,27 +31,28 @@ trait Sparse[S <: Scalar, +Repr[s <: Scalar] <: Sparse[s, Repr]] extends Matrix[
 }
 
 
-trait HashSparse[S <: Scalar] extends Sparse[S, HashSparse] {
+class HashSparse[S <: Scalar : ScalarOps](numRows: Int, numCols: Int)
+    extends Sparse[S, HashSparse](numRows, numCols) {
   val data = new HashMap[(Int, Int), S#A]()
   override val description = "Sparse Hashtable"
   override def definedIndices: Iterable[(Int, Int)] = data.keys
   override def apply(i: Int, j: Int): S#A = data.getOrElse((i, j), scalar.zero)
   override def update(i: Int, j: Int, x: S#A) { data((i, j)) = x }
   
-  def toPacked(implicit db: RawData.Builder[S#Raw, S#Buf]): PackedSparse[S] = PackedSparse.buildFromHashSparse(this)
+  def toPacked(implicit db: RawData.Builder[S#Raw, S#Buf]): PackedSparse[S] = {
+    val ret = PackedSparse.buildFromIndices(numRows, numCols, definedIndices)
+    for ((i, j) <- definedIndices) {
+      ret(i, j) = this(i, j)
+    }
+    ret
+  }
 }
 
+
 object PackedSparse {
-  
   def buildFromIndices[S <: Scalar](numRows: Int, numCols: Int, indices: Iterable[(Int, Int)])
       (implicit so: ScalarOps[S], db: RawData.Builder[S#Raw, S#Buf]): PackedSparse[S] = {
-    val nr = numRows
-    val nc = numCols
-    new PackedSparse[S] {
-      override val scalar = so
-      override val numRows = nr
-      override val numCols = nc
-      
+    new PackedSparse[S](numRows, numCols) {
       override val data = db.build(scalar.components*indices.size)
       override val definedCols = {
         val cols = Array.fill(numRows)(new ArrayBuffer[Int]())
@@ -70,18 +72,10 @@ object PackedSparse {
       }
     }
   }
-  
-  def buildFromHashSparse[S <: Scalar](src: HashSparse[S])(implicit db: RawData.Builder[S#Raw, S#Buf]): PackedSparse[S] = {
-    implicit val so = src.scalar
-    val ret = buildFromIndices(src.numRows, src.numCols, src.definedIndices)
-    for ((i, j) <- src.definedIndices) {
-      ret(i, j) = src(i, j)
-    }
-    ret
-  }
 }
 
-trait PackedSparse[S <: Scalar] extends Sparse[S, PackedSparse] {
+abstract class PackedSparse[S <: Scalar : ScalarOps]
+    (numRows: Int, numCols: Int) extends Sparse[S, PackedSparse](numRows, numCols) {
   val data: RawData[S#Raw, S#Buf]
   val definedCols: Array[Array[Int]]
   val definedColsAccum: Array[Int]
@@ -113,16 +107,9 @@ trait PackedSparse[S <: Scalar] extends Sparse[S, PackedSparse] {
 
 
 trait SparseBuilders {
-  implicit def hashSparseBuilder[S <: Scalar](implicit so: ScalarOps[S]) = new MatrixBuilder[S, HashSparse] {
+  implicit def hashSparseBuilder[S <: Scalar : ScalarOps] = new MatrixBuilder[S, HashSparse] {
     def zeros(numRows: Int, numCols: Int) = {
-      MatrixDims.checkDims(numRows, numCols)
-      val nr = numRows
-      val nc = numCols
-      new HashSparse[S] {
-        override val scalar = so
-        override val numRows = nr
-        override val numCols = nc
-      }
+      new HashSparse[S](numRows, numCols)
     }
     
     def duplicate(m: HashSparse[S]): HashSparse[S] = {

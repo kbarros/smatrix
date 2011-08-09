@@ -8,11 +8,13 @@ object :: extends DenseSlice
 object Dense extends DenseBuilders with DenseAdders with DenseMultipliers with DenseLapackImplicits
 
 
-trait Dense[S <: Scalar] extends Matrix[S, Dense] {
-  val description = "Dense"
-  val netlib: Netlib[S]
-  val data: RawData[S#Raw, S#Buf]
-
+class Dense[S <: Scalar]
+    (numRows: Int, numCols: Int)
+    (implicit so: ScalarOps[S], db: RawData.Builder[S#Raw, S#Buf], val netlib: Netlib[S])
+    extends Matrix[S, Dense](numRows, numCols) {
+  override val description = "Dense"
+  val data: RawData[S#Raw, S#Buf] = db.build(so.components*numRows*numCols)
+  
   def index(i: Int, j: Int) = {
     MatrixDims.checkKey(this, i, j)
     i + j*numRows // fortran column major convention
@@ -71,18 +73,9 @@ trait Dense[S <: Scalar] extends Matrix[S, Dense] {
 
 trait DenseBuilders {
   implicit def denseBuilder[S <: Scalar]
-      (implicit so: ScalarOps[S], sb: RawData.Builder[S#Raw, S#Buf], nl: Netlib[S]) = new MatrixBuilder[S, Dense] {
+      (implicit so: ScalarOps[S], db: RawData.Builder[S#Raw, S#Buf], nl: Netlib[S]) = new MatrixBuilder[S, Dense] {
     def zeros(numRows: Int, numCols: Int) = {
-      require(numRows > 0 && numCols > 0, "Cannot build matrix with non-positive dimensions [%d, %d]".format(numRows, numCols))
-      val nr = numRows
-      val nc = numCols
-      new Dense[S] {
-        val netlib = nl
-        val data = sb.build(so.components*nr*nc)
-        val scalar = so
-        val numRows = nr
-        val numCols = nc
-      }
+      new Dense[S](numRows, numCols)
     }
         
     def duplicate(m: Dense[S]): Dense[S] = {
