@@ -8,12 +8,11 @@ object :: extends DenseSlice
 object Dense extends DenseBuilders with DenseAdders with DenseMultipliers with DenseLapackImplicits
 
 
-class Dense[S <: Scalar]
-    (numRows: Int, numCols: Int)
-    (implicit so: ScalarOps[S], db: RawData.Builder[S#Raw, S#Buf], val netlib: Netlib[S])
+class Dense[S <: Scalar : ScalarOps : ScalarBuilder : Netlib](numRows: Int, numCols: Int)
     extends Matrix[S, Dense](numRows, numCols) {
   override val description = "Dense"
-  val data: RawData[S#Raw, S#Buf] = db.build(so.components*numRows*numCols)
+  val netlib: Netlib[S] = implicitly[Netlib[S]]
+  val data: RawData[S#Raw, S#Buf] = implicitly[ScalarBuilder[S]].build(scalar.components*numRows*numCols)
   
   def index(i: Int, j: Int) = {
     MatrixDims.checkKey(this, i, j)
@@ -72,8 +71,7 @@ class Dense[S <: Scalar]
 
 
 trait DenseBuilders {
-  implicit def denseBuilder[S <: Scalar]
-      (implicit so: ScalarOps[S], db: RawData.Builder[S#Raw, S#Buf], nl: Netlib[S]) = new MatrixBuilder[S, Dense] {
+  implicit def denseBuilder[S <: Scalar : ScalarOps : ScalarBuilder : Netlib] = new MatrixBuilder[S, Dense] {
     def zeros(numRows: Int, numCols: Int) = {
       new Dense[S](numRows, numCols)
     }

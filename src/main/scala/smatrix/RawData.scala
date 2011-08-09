@@ -7,21 +7,6 @@ import java.nio.Buffer
 
 
 object RawData {
-  
-  object Builder {
-    implicit val FltArray = new Builder[Float, FloatBuffer] {
-      def build(size: Int) = new FltArray(size)
-    }
-    implicit val DblArray = new Builder[Double, DoubleBuffer] {
-      def build(size: Int) = new DblArray(size)
-    }
-  }
-  
-  trait Builder[@specialized(Float, Double) Raw, Buf <: Buffer] {
-    def build(size: Int): RawData[Raw, Buf]
-  }  
-
-
   class FltArray(val size: Int) extends RawData[Float, FloatBuffer] {
     val array = new Array[Float](size)
     val buffer = java.nio.FloatBuffer.wrap(array)

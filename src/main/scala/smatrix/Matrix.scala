@@ -20,11 +20,12 @@ object Matrix {
 
 // TODO: Specialize S#A for apply/update methods
 // Eclipse crashes when "s" parameter is renamed, and file is saved 
-abstract class Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]]
-    (val numRows: Int, val numCols: Int)(implicit val scalar: ScalarOps[S]) 
-    extends MatrixDims { self: Repr[S] =>
+abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, Repr]]
+    (val numRows: Int, val numCols: Int) extends MatrixDims { self: Repr[S] =>
   MatrixDims.checkDims(numRows, numCols)
 
+  val scalar = implicitly[ScalarOps[S]]
+  
   /** A description of the matrix type. */
   val description: String
   

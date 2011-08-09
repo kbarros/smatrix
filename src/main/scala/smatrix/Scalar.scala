@@ -166,3 +166,19 @@ trait GenScalarOps[@specialized(Float, Double) A, @specialized(Float, Double) Ra
   }
 }
 trait ScalarOps[S <: Scalar] extends GenScalarOps[S#A, S#Raw, S#Buf]
+
+
+
+object ScalarBuilder {
+  implicit def FltArray[S <: Scalar { type Raw = Float; type Buf = FloatBuffer }] = new ScalarBuilder[S] {
+    def build(size: Int) = new RawData.FltArray(size)
+  }
+  
+  implicit def DblArray[S <: Scalar { type Raw = Double; type Buf = DoubleBuffer }] = new ScalarBuilder[S] {
+    def build(size: Int) = new RawData.DblArray(size)
+  }
+}
+
+trait ScalarBuilder[S <: Scalar] {
+  def build(size: Int): RawData[S#Raw, S#Buf]
+}
