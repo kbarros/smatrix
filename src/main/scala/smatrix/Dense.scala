@@ -26,7 +26,7 @@ class Dense[S <: Scalar : ScalarOps : ScalarBuilder : Netlib](numRows: Int, numC
     else if (numCols == 1)
       this(i, 0)
     else {
-      require(numRows == 1 || numCols == 1, "Cannot apply a single index to non-vector matrix of shape [%d, %d]".format(numRows, numCols))
+      require(numRows == 1 || numCols == 1, "Cannot apply a single index to non-vector matrix of shape [%d, %d].".format(numRows, numCols))
       sys.error("")
     }
   }
@@ -48,17 +48,17 @@ class Dense[S <: Scalar : ScalarOps : ScalarBuilder : Netlib](numRows: Int, numC
     else if (numCols == 1)
       this(i, 0) = x
     else {
-      require(numRows == 1 || numCols == 1, "Cannot apply a single index to non-vector matrix of shape [%d, %d]".format(numRows, numCols))
+      require(numRows == 1 || numCols == 1, "Cannot apply a single index to non-vector matrix of shape [%d, %d].".format(numRows, numCols))
       sys.error("")
     }
   }
   def update[That[s <: Scalar] <: Matrix[s, That]](i: Int, _slice: DenseSlice, that: That[S]) {
-    require(that.numRows == 1 && numCols == that.numCols, "Cannot perform matrix assignment of shape: [%d, %d] -> [%d, %d](%d, ::)".format(
+    require(that.numRows == 1 && numCols == that.numCols, "Cannot perform matrix assignment of shape: [%d, %d] -> [%d, %d](%d, ::).".format(
       that.numRows, that.numCols, numRows, numCols, i))
     for (j <- 0 until numCols) this(i, j) = that(0, j)
   }
   def update[That[s <: Scalar] <: Matrix[s, That]](_slice: DenseSlice, j: Int, that: That[S]) {
-    require(that.numCols == 1 && numRows == that.numRows, "Cannot perform matrix assignment of shape: [%d, %d] -> [%d, %d](::, %d)".format(
+    require(that.numCols == 1 && numRows == that.numRows, "Cannot perform matrix assignment of shape: [%d, %d] -> [%d, %d](::, %d).".format(
       that.numRows, that.numCols, numRows, numCols, j))
     for (i <- 0 until numRows) this(i, j) = that(i, 0)
   }
@@ -165,11 +165,11 @@ object DenseLapackOps {
   def QRSolve[S <: Scalar](X: Dense[S], A: Dense[S], V: Dense[S], transpose: Boolean)(implicit mb: MatrixBuilder[S, Dense]) {
     require(
         A.numCols == X.numRows && A.numRows == V.numRows && X.numCols == V.numCols, 
-        "Cannot divide matrices: [%d, %d] \\ [%d, %d] -> [%d, %d]".format(
+        "Cannot divide matrices: [%d, %d] \\ [%d, %d] -> [%d, %d].".format(
             A.numRows, A.numCols, V.numRows, V.numCols, X.numRows, X.numCols 
         )
     )
-    require(X.netlib != null, "Netlib library required for division operation")
+    require(X.netlib != null, "Netlib library required for division operation.")
     
     val nrhs = V.numCols;
     
@@ -229,7 +229,7 @@ class DenseRealLapackOps[S <: Scalar.RealTyp](self: Dense[S]) extends DenseLapac
   def eig(implicit mb: MatrixBuilder[S, Dense]): (Dense[S], Dense[S], Dense[S]) = {
     self.netlib match {
       case netlib: NetlibReal[_] => {
-        require(self.numRows == self.numCols, "Cannot find eigenvectors of non-square matrix [%d, %d]".format(self.numRows, self.numCols))
+        require(self.numRows == self.numCols, "Cannot find eigenvectors of non-square matrix [%d, %d].".format(self.numRows, self.numCols))
         
         val n = self.numRows
 
@@ -267,8 +267,8 @@ class DenseRealLapackOps[S <: Scalar.RealTyp](self: Dense[S]) extends DenseLapac
           Vr.data.buffer, math.max(1,n),
           work.data.buffer, lwork, info)
 
-        require(info.getValue >= 0, "Error in dgeev argument %d".format(-info.getValue))
-        require(info.getValue <= 0, "Not converged dgeev; only %d of %d eigenvalues computed".format(info.getValue, self.numRows))
+        require(info.getValue >= 0, "Error in dgeev argument %d.".format(-info.getValue))
+        require(info.getValue <= 0, "Not converged dgeev; only %d of %d eigenvalues computed.".format(info.getValue, self.numRows))
         
         (Wr, Wi, Vr)
       }
@@ -281,7 +281,7 @@ class DenseComplexLapackOps[S <: Scalar.ComplexTyp](self: Dense[S]) extends Dens
   def eig(implicit mb: MatrixBuilder[S, Dense]): (Dense[S], Dense[S]) = {
     self.netlib match {
       case netlib: NetlibComplex[_] => {
-        require(self.numRows == self.numCols, "Cannot find eigenvectors of non-square matrix [%d, %d]".format(self.numRows, self.numCols))
+        require(self.numRows == self.numCols, "Cannot find eigenvectors of non-square matrix [%d, %d].".format(self.numRows, self.numCols))
         
         val n = self.numRows
 
@@ -319,8 +319,8 @@ class DenseComplexLapackOps[S <: Scalar.ComplexTyp](self: Dense[S]) extends Dens
           Vr.data.buffer, math.max(1,n),
           work.data.buffer, lwork, rwork.data.buffer, info)
 
-        require(info.getValue >= 0, "Error in dgeev argument %d".format(-info.getValue))
-        require(info.getValue <= 0, "Not converged dgeev; only %d of %d eigenvalues computed".format(info.getValue, self.numRows))
+        require(info.getValue >= 0, "Error in dgeev argument %d.".format(-info.getValue))
+        require(info.getValue <= 0, "Not converged dgeev; only %d of %d eigenvalues computed.".format(info.getValue, self.numRows))
         
         (W, Vr)
       }

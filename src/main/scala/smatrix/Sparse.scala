@@ -11,14 +11,14 @@ abstract class Sparse[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Sparse[s, R
     (numRows: Int, numCols: Int) extends Matrix[S, Repr](numRows, numCols) { self: Repr[S] =>
 
   override def transform(f: S#A => S#A): this.type = {
-    require(f(scalar.zero) == scalar.zero, "Transform on sparse matrix must preserve zero")
+    require(f(scalar.zero) == scalar.zero, "Sparse transformation function must preserve zero.")
     for ((i, j) <- definedIndices) { this(i, j) = f(this(i, j)) }
     this
   }
 
   override def map[A2, S2 <: Scalar{type A=A2}, That[s <: Scalar] >: Repr[s] <: Matrix[s, That]]
       (f: S#A => S2#A)(implicit scalar2: ScalarOps[S2], mb: MatrixBuilder[S2, That]): That[S2] = {
-    require(f(scalar.zero) == scalar2.zero, "Map on sparse matrix must preserve zero")
+    require(f(scalar.zero) == scalar2.zero, "Sparse map function must preserve zero.")
     mb.map(this)(f)
   }
 }
@@ -33,7 +33,7 @@ class HashSparse[S <: Scalar : ScalarOps](numRows: Int, numCols: Int)
   override def update(i: Int, j: Int, x: S#A) { data((i, j)) = x }
   
   def toPacked(implicit db: ScalarBuilder[S]): PackedSparse[S] = {
-    val ret = PackedSparse.buildFromIndices(numRows, numCols, definedIndices)
+    val ret = PackedSparse.fromIndices(numRows, numCols, definedIndices)
     for ((i, j) <- definedIndices) {
       ret(i, j) = this(i, j)
     }
@@ -43,7 +43,7 @@ class HashSparse[S <: Scalar : ScalarOps](numRows: Int, numCols: Int)
 
 
 object PackedSparse {
-  def buildFromIndices[S <: Scalar : ScalarOps : ScalarBuilder]
+  def fromIndices[S <: Scalar : ScalarOps : ScalarBuilder]
       (numRows: Int, numCols: Int, indices: Iterable[(Int, Int)]) : PackedSparse[S] = {
     new PackedSparse[S](numRows, numCols) {
       override val data = implicitly[ScalarBuilder[S]].build(indices.size)
@@ -85,7 +85,7 @@ abstract class PackedSparse[S <: Scalar : ScalarOps]
   }
   override def update(i: Int, j: Int, x: S#A) {
     indexOption(i, j) match {
-      case None => require(false, "Cannot write to undefined index (%d %d) in PackedSparse matrix".format(i, j))
+      case None => require(false, "Cannot write to undefined index (%d %d) in PackedSparse matrix.".format(i, j))
       case Some(idx) => scalar.write(data, idx, x)
     }
   }
@@ -101,25 +101,44 @@ abstract class PackedSparse[S <: Scalar : ScalarOps]
 
 trait SparseBuilders {
   implicit def hashSparseBuilder[S <: Scalar : ScalarOps] = new MatrixBuilder[S, HashSparse] {
-    def zeros(numRows: Int, numCols: Int) = {
+    def zeros(numRows: Int, numCols: Int): HashSparse[S] = {
       new HashSparse[S](numRows, numCols)
     }
-    
     def duplicate(m: HashSparse[S]): HashSparse[S] = {
       val ret = zeros(m.numRows, m.numCols)
       for (k <- m.data.keys) { ret.data(k) = m.data(k) }
       ret
     }
-    
     def transpose(m: HashSparse[S]): HashSparse[S] = {
       val ret = zeros(m.numCols, m.numRows)
       for ((i, j) <- m.data.keys) { ret.data((j, i)) = m.data((i, j)) }
       ret
     }
-    
     def map[S0 <: Scalar](m: HashSparse[S0])(f: S0#A => S#A): HashSparse[S] = {
       val ret = zeros(m.numRows, m.numCols)
       for (k <- m.data.keys) { ret.data(k) = f(m.data(k)) }
+      ret
+    }
+  }
+
+  implicit def packedSparseBuilder[S <: Scalar : ScalarOps : ScalarBuilder] = new MatrixBuilder[S, PackedSparse] {
+    def zeros(numRows: Int, numCols: Int): PackedSparse[S] = {
+      PackedSparse.fromIndices(numRows, numCols, Seq())
+    }
+    def duplicate(m: PackedSparse[S]): PackedSparse[S] = {
+      val ret = PackedSparse.fromIndices(m.numRows, m.numCols, m.definedIndices)
+      for ((i, j) <- m.definedIndices) { ret(i, j) = m(i, j) }
+      ret
+    }
+    def transpose(m: PackedSparse[S]): PackedSparse[S] = {
+      val indices = m.definedIndices.map { case (i, j) => (j, i) }
+      val ret = PackedSparse.fromIndices(m.numCols, m.numRows, indices)
+      for ((i, j) <- indices) { ret(i, j) = m(j, i) }
+      ret
+    }
+    def map[S0 <: Scalar](m: PackedSparse[S0])(f: S0#A => S#A): PackedSparse[S] = {
+      val ret = PackedSparse.fromIndices(m.numRows, m.numCols, m.definedIndices)
+      for ((i, j) <- m.definedIndices) { ret(i, j) = f(m(i, j)) }
       ret
     }
   }
