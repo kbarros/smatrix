@@ -12,7 +12,7 @@ class Dense[S <: Scalar : ScalarOps : ScalarBuilder : Netlib](numRows: Int, numC
     extends Matrix[S, Dense](numRows, numCols) {
   override val description = "Dense"
   val netlib: Netlib[S] = implicitly[Netlib[S]]
-  val data: RawData[S#Raw, S#Buf] = implicitly[ScalarBuilder[S]].build(scalar.components*numRows*numCols)
+  val data: RawData[S#Raw, S#Buf] = implicitly[ScalarBuilder[S]].build(numRows*numCols)
   
   def index(i: Int, j: Int) = {
     MatrixDims.checkKey(this, i, j)
@@ -134,6 +134,15 @@ trait DenseMultipliers {
             ret.scalar.zero, // beta
             ret.data.buffer, ret.numRows // C matrix
         )
+      }
+    }
+  }
+  
+  implicit def denseDenseDotter[S <: Scalar] = new MatrixDotter[S, Dense, Dense] {
+    def dotTo(m1: Dense[S], m2: Dense[S], ret: RawData[S#Raw, S#Buf]) {
+      MatrixDims.checkDot(m1, m2)
+      for (i <- 0 until m1.numCols) {
+        m1.scalar.maddTo(m1.data, i, m2.data, i, ret, 0)
       }
     }
   }

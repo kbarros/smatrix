@@ -140,15 +140,14 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   
   /** Takes the dot product of this row matrix and a column matrix.
    */
-  def dot[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
-        (that: M2[S])
-        (implicit mm: MatrixMultiplier[S, M1, M2, M3],
-                  mb: MatrixBuilder[S, M3]): S#A = {
+  def dot[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
+      (that: M2[S])
+      (implicit sb: ScalarBuilder[S], md: MatrixDotter[S, M1, M2]): S#A = {
     MatrixDims.checkDot(this, that)
-    val m3 = mb.zeros(1, 1)
-    mm.maddTo(this, that, m3)
-    val ret = m3(0, 0)
-    m3.dispose()
+    val accum = sb.build(1)
+    md.dotTo(this, that, accum)
+    val ret = scalar.read(accum, 0)
+    accum.dispose()
     ret
   }
 
@@ -250,4 +249,8 @@ class MatrixAdder[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[_ <: Scalar]
 
 abstract class MatrixMultiplier[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[_ <: Scalar]] {
   def maddTo(m1: M1[S], m2: M2[S], ret: M3[S])
+}
+
+abstract class MatrixDotter[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar]] {
+  def dotTo(m1: M1[S], m2: M2[S], ret: RawData[S#Raw, S#Buf])
 }

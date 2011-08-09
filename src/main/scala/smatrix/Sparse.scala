@@ -46,7 +46,7 @@ object PackedSparse {
   def buildFromIndices[S <: Scalar : ScalarOps : ScalarBuilder]
       (numRows: Int, numCols: Int, indices: Iterable[(Int, Int)]) : PackedSparse[S] = {
     new PackedSparse[S](numRows, numCols) {
-      override val data = implicitly[ScalarBuilder[S]].build(scalar.components*indices.size)
+      override val data = implicitly[ScalarBuilder[S]].build(indices.size)
       override val definedCols = {
         val cols = Array.fill(numRows)(new ArrayBuffer[Int]())
         for ((i, j) <- indices) {
@@ -155,25 +155,23 @@ trait SparseAdders {
 
 
 trait SparseMultipliers {
+  
   implicit def hashSparseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, HashSparse, Dense, Dense] {
     def maddTo(m1: HashSparse[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      // ret_ij += \sum_k m1_ik m2_kj
       for ((i, k) <- m1.data.keys;
-           val m1_ik = m1.apply(i, k); 
            j <- 0 until ret.numCols) {
-        ret.scalar.maddTo(m2.data, m2.index(k, j), m1_ik, ret.data, ret.index(i, j))
+        ret.scalar.maddTo(m2.data, m2.index(k, j), m1(i, k), ret.data, ret.index(i, j))
       }
     }
   }
+  
   implicit def denseHashSparseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, HashSparse, Dense] {
     def maddTo(m1: Dense[S], m2: HashSparse[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      // ret_ij += \sum_k m1_ik m2_kj
       for ((k, j) <- m2.data.keys;
-           val m2_kj = m1.apply(k, j); 
            i <- 0 until ret.numRows) {
-        ret.scalar.maddTo(m1.data, m1.index(i, k), m2_kj, ret.data, ret.index(i, j))
+        ret.scalar.maddTo(m1.data, m1.index(i, k), m2(k, j), ret.data, ret.index(i, j))
       }
     }
   }
