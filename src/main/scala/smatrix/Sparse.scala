@@ -154,28 +154,27 @@ trait SparseAdders {
 }
 
 
-trait SparseMultipliers {
-  
-  implicit def hashSparseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, HashSparse, Dense, Dense] {
-    def maddTo(m1: HashSparse[S], m2: Dense[S], ret: Dense[S]) {
+trait SparseMultipliersLowPriority {
+  implicit def sparseDenseMultiplier[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixMultiplier[S, M, Dense, Dense] {
+    def maddTo(m1: M[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      for ((i, k) <- m1.data.keys;
+      for ((i, k) <- m1.definedIndices;
            j <- 0 until ret.numCols) {
         ret.scalar.maddTo(m2.data, m2.index(k, j), m1(i, k), ret.data, ret.index(i, j))
       }
     }
   }
-  
-  implicit def denseHashSparseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, HashSparse, Dense] {
-    def maddTo(m1: Dense[S], m2: HashSparse[S], ret: Dense[S]) {
+  implicit def denseSparseMultiplier[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixMultiplier[S, Dense, M, Dense] {
+    def maddTo(m1: Dense[S], m2: M[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      for ((k, j) <- m2.data.keys;
+      for ((k, j) <- m2.definedIndices;
            i <- 0 until ret.numRows) {
         ret.scalar.maddTo(m1.data, m1.index(i, k), m2(k, j), ret.data, ret.index(i, j))
       }
     }
   }
-
+}
+trait SparseMultipliers extends SparseMultipliersLowPriority {
   implicit def packedSparseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, PackedSparse, Dense, Dense] {
     def maddTo(m1: PackedSparse[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
