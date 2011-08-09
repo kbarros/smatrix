@@ -6,6 +6,8 @@ import scala.collection.mutable.ArrayBuffer
 
 object Sparse extends SparseBuilders with SparseAdders with SparseMultipliers
 
+
+// TODO: remove Repr parameter?
 trait Sparse[S <: Scalar, +Repr[s <: Scalar] <: Sparse[s, Repr]] extends Matrix[S, Repr] { self: Repr[S] =>
   def definedIndices: Iterable[(Int, Int)]
 

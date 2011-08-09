@@ -21,54 +21,121 @@ object Matrix {
 // TODO: Specialize S#A for apply/update methods
 // Eclipse crashes when "s" parameter is renamed, and file is saved 
 trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixDims { self: Repr[S] =>
+  /** A description of the matrix type. */
   val description: String
+  
+  /** Scalar operations associated with the type of the matrix elements
+   */
   val scalar: ScalarOps[S]
   
+  /** Gets the value of this matrix at given row and column indices.
+   */
   def apply(i: Int, j: Int): S#A
+  
+  /** Sets the value of this matrix at given row and column indices.
+   */
   def update(i: Int, j: Int, x: S#A)
+  
+  /** Modifies this matrix by applying a function to each matrix element.
+   */
   def transform(f: S#A => S#A): this.type
+  
+  /** Disposes the memory stored by this matrix, making this matrix invalid (optional).
+   */
   def dispose() {}
   
+  /** Creates a copy of this matrix.
+   */
   def duplicate[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     mb.duplicate(this)
   }
   
+  /** Converts this matrix to a dense matrix.
+   */
   def toDense(implicit mb: MatrixBuilder[S, Dense]): Dense[S] = {
     val ret = mb.zeros(numRows, numCols)
     for (j <- 0 until numCols; i <- 0 until numRows) { ret(i, j) = this(i, j) }
     ret
   }
   
+  /** Builds a new matrix by applying a function to all elements of this matrix.
+   */
   // The parameter A2 is for type inference only
   def map[A2, S2 <: Scalar{type A=A2}, That[s <: Scalar] >: Repr[s] <: Matrix[s, That]]
       (f: S#A => S2#A)(implicit scalar2: ScalarOps[S2], mb: MatrixBuilder[S2, That]): That[S2] = {
     mb.map(this)(f)
   }
   
+  /** Returns this matrix scaled by a parameter.
+   */
   def *[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](x: S#A)(implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.mul(_, x))
   }
 
+  /** Returns this matrix scaled by the inverse of a parameter.
+   */
   def /[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](x: S#A)(implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.div(_, x))
   }
 
+  /** Returns the element-wise negation of this matrix.
+   */
   def unary_-[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.neg(_))
   }
 
+  /** Returns the element-wise conjugate of this matrix.
+   */
   def conj[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.conj(_))
   }
 
+  /** Returns the transpose of this matrix.
+   */
   def tran[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     mb.transpose(this)
   }
   
+  /** Returns the hermitian conjugate (dagger) of this matrix.
+   */
   def dag[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     tran(mb).transform(scalar.conj(_))
   }
+  
+  /** Returns the Frobenius norm squared of this matrix (i.e., the square of the Euclidean norm of the vector of matrix elements).
+   */
+  def norm2: S#A = {
+    var ret = scalar.zero
+    for (i <- 0 until numRows; j <- 0 until numCols) {
+      val x = this(i, j)
+      ret = scalar.add(ret, scalar.mul(x, scalar.conj(x)))
+    }
+    ret
+  }
 
+  /** Sums all matrix elements.
+   */
+  def sum: S#A = {
+    var ret = scalar.zero
+    for (i <- 0 until numRows; j <- 0 until numCols) {
+      ret = scalar.add(ret, this(i, j))
+    }
+    ret
+  }
+  
+  /** Copies the matrix elements to an array in column major order (rows change most rapidly).
+   */
+  def toArray(implicit m: Manifest[S#A]): Array[S#A] = {
+    val ret = new Array[S#A](numRows*numCols)
+    for (j <- 0 until numCols;
+         i <- 0 until numRows) {
+      ret(i + j*numRows) = this(i, j)
+    }
+    ret
+  }
+  
+  /** Takes the dot product of this row matrix and a column matrix.
+   */
   def dot[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (that: M2[S])
         (implicit mm: MatrixMultiplier[S, M1, M2, M3],
@@ -81,6 +148,8 @@ trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixD
     ret
   }
 
+  /** Multiplies this matrix with another.
+   */
   def *[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (that: M2[S])
         (implicit mm: MatrixMultiplier[S, M1, M2, M3],
@@ -91,6 +160,8 @@ trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixD
     ret
   }
 
+  /** Adds this matrix with another.
+   */
   def +[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (that: M2[S])
         (implicit ma: MatrixAdder[S, M1, M2, M3],
@@ -101,6 +172,8 @@ trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixD
     ret
   }
 
+  /** Subtracts another matrix from this one.
+   */
   def -[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (that: M2[S])
         (implicit ma: MatrixAdder[S, M1, M2, M3],
@@ -111,6 +184,8 @@ trait Matrix[S <: Scalar, +Repr[s <: Scalar] <: Matrix[s, Repr]] extends MatrixD
     ret
   }
   
+  /** Generates a string representation of this matrix.
+   */
   override def toString = {
     val sb = new StringBuilder()
     val maxRows = 6
