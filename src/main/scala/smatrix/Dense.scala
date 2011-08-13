@@ -114,24 +114,46 @@ trait DenseAdders {
 
 
 trait DenseMultipliers {
-  implicit def denseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, Dense, Dense] {
-    def maddTo(m1: Dense[S], m2: Dense[S], ret: Dense[S]) {
+  implicit def denseDenseMultiplier[S <: Scalar : ScalarOps] = new MatrixMultiplier[S, Dense, Dense, Dense] {
+    def maddTo(alpha: S#A, m1: Dense[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      if (ret.netlib == null) {
-        for (i <- 0 until ret.numRows;
-             k <- 0 until m1.numCols;
-             j <- 0 until ret.numCols) {
-          ret.scalar.maddTo(m1.data, m1.index(i, k), m2.data, m2.index(k, j), ret.data, ret.index(i, j))
+      val s = implicitly[ScalarOps[S]]
+      if (alpha == s.zero) {
+        // no-op
+      }
+      else if (ret.netlib == null || (ret.numCols min ret.numRows) <= 4) {
+        if (alpha == s.one) {
+          for (j <- 0 until ret.numCols;
+               k <- 0 until m1.numCols;
+               i <- 0 until ret.numRows) {
+            s.maddTo(m1.data, i+k*m1.numRows, m2.data, k+j*m2.numRows, ret.data, i+j*ret.numRows)
+          }
+        }
+        else if (ret.numRows > ret.numCols) {
+          for (j <- 0 until ret.numCols;
+               k <- 0 until m1.numCols;
+               val alpha_m2_kj = s.mul(alpha, s.read(m2.data, k+j*m2.numRows)); 
+               i <- 0 until ret.numRows) {
+            s.maddTo(m1.data, i+k*m1.numRows, alpha_m2_kj, ret.data, i+j*ret.numRows)
+          }
+        }
+        else {
+          for (i <- 0 until ret.numRows;
+               k <- 0 until m1.numCols;
+               val alpha_m1_ik = s.mul(alpha, s.read(m1.data, i+k*m1.numRows)); 
+               j <- 0 until ret.numCols) {
+            s.maddTo(m2.data, k+j*m2.numRows, alpha_m1_ik, ret.data, i+j*ret.numRows)
+          }
         }
       }
       else {
         ret.netlib.gemm(Netlib.CblasColMajor, Netlib.CblasNoTrans, Netlib.CblasNoTrans,
             ret.numRows, ret.numCols, // dimension of return matrix
             m1.numCols, // dimension of summation index
-            ret.scalar.one, // alpha
+            alpha, // alpha
             m1.data.buffer, m1.numRows, // A matrix
             m2.data.buffer, m2.numRows, // B matrix
-            ret.scalar.zero, // beta
+            s.zero, // beta
             ret.data.buffer, ret.numRows // C matrix
         )
       }

@@ -174,49 +174,55 @@ trait SparseAdders {
 
 
 trait SparseMultipliersLowPriority {
-  implicit def sparseDenseMultiplier[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixMultiplier[S, M, Dense, Dense] {
-    def maddTo(m1: M[S], m2: Dense[S], ret: Dense[S]) {
+  implicit def sparseDenseMultiplier[S <: Scalar : ScalarOps, M[s <: Scalar] <: Sparse[s, M]] = new MatrixMultiplier[S, M, Dense, Dense] {
+    def maddTo(alpha: S#A, m1: M[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
+      val s = implicitly[ScalarOps[S]]
       for ((i, k) <- m1.definedIndices;
+           val alpha_m1_ik = s.mul(alpha, m1(i, k));
            j <- 0 until ret.numCols) {
-        ret.scalar.maddTo(m2.data, m2.index(k, j), m1(i, k), ret.data, ret.index(i, j))
+        s.maddTo(m2.data, m2.index(k, j), alpha_m1_ik, ret.data, ret.index(i, j))
       }
     }
   }
-  implicit def denseSparseMultiplier[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixMultiplier[S, Dense, M, Dense] {
-    def maddTo(m1: Dense[S], m2: M[S], ret: Dense[S]) {
+  implicit def denseSparseMultiplier[S <: Scalar : ScalarOps, M[s <: Scalar] <: Sparse[s, M]] = new MatrixMultiplier[S, Dense, M, Dense] {
+    def maddTo(alpha: S#A, m1: Dense[S], m2: M[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
+      val s = implicitly[ScalarOps[S]]
       for ((k, j) <- m2.definedIndices;
+           val alpha_m2_kj = s.mul(alpha, m2(k, j));
            i <- 0 until ret.numRows) {
-        ret.scalar.maddTo(m1.data, m1.index(i, k), m2(k, j), ret.data, ret.index(i, j))
+        s.maddTo(m1.data, m1.index(i, k), alpha_m2_kj, ret.data, ret.index(i, j))
       }
     }
   }
 }
 
 trait SparseMultipliers extends SparseMultipliersLowPriority {
-  implicit def packedSparseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, PackedSparse, Dense, Dense] {
-    def maddTo(m1: PackedSparse[S], m2: Dense[S], ret: Dense[S]) {
+  implicit def packedSparseDenseMultiplier[S <: Scalar : ScalarOps] = new MatrixMultiplier[S, PackedSparse, Dense, Dense] {
+    def maddTo(alpha: S#A, m1: PackedSparse[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-//      // Unoptimized Code      
-//      for (i <- 0 until m1.numRows;
-//           iter <- m1.definedCols(i).indices;
-//           val idx1 = iter + m1.definedColsAccum(i);
-//           val k = m1.definedCols(i)(iter);
-//           j <- 0 until ret.numCols) {
-//        ret.scalar.maddTo(m1.data, idx1, m2.data, m2.index(k, j), ret.data, ret.index(i, j))
-//      }
+      val s = implicitly[ScalarOps[S]]
       var i = 0
       while (i < m1.numRows) {
         var iter = 0
         while (iter < m1.definedCols(i).size) {
           val idx1 = iter + m1.definedColsAccum(i)
           val k = m1.definedCols(i)(iter)
-          var j = 0
-          while (j < ret.numCols) {
-            //  m1_ik m2_kj -> ret_ij
-            ret.scalar.maddTo(m1.data, idx1, m2.data, m2.index(k, j), ret.data, ret.index(i, j))
-            j += 1
+          if (alpha == s.one) {
+            var j = 0
+            while (j < ret.numCols) {
+              s.maddTo(m2.data, k+j*m2.numRows, m1.data, idx1, ret.data, i+j*ret.numRows)
+              j += 1
+            }
+          }
+          else {
+            val alpha_m1_ik = s.mul(alpha, s.read(m1.data, idx1))
+            var j = 0
+            while (j < ret.numCols) {
+              s.maddTo(m2.data, k+j*m2.numRows, alpha_m1_ik, ret.data, i+j*ret.numRows)
+              j += 1
+            }
           }
           iter += 1
         }
@@ -224,28 +230,30 @@ trait SparseMultipliers extends SparseMultipliersLowPriority {
       }
     }
   }
-  implicit def densePackedSparseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, PackedSparse, Dense] {
-    def maddTo(m1: Dense[S], m2: PackedSparse[S], ret: Dense[S]) {
+  implicit def densePackedSparseMultiplier[S <: Scalar : ScalarOps] = new MatrixMultiplier[S, Dense, PackedSparse, Dense] {
+    def maddTo(alpha: S#A, m1: Dense[S], m2: PackedSparse[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-//      // Unoptimized code
-//      for (k <- 0 until m1.numCols;
-//           iter <- m2.definedCols(k).indices;
-//           val idx2 = iter + m2.definedColsAccum(k);
-//           val j = m2.definedCols(k)(iter);
-//           i <- 0 until ret.numRows) {
-//        ret.scalar.maddTo(m1.data, m1.index(i, k), m2.data, idx2, ret.data, ret.index(i, j))
-//      }
+      val s = implicitly[ScalarOps[S]]
       var k = 0
       while (k < m1.numCols) {
         var iter = 0
         while (iter < m2.definedCols(k).size) {
           val idx2 = iter + m2.definedColsAccum(k)
           val j = m2.definedCols(k)(iter)
-          var i = 0
-          while (i < ret.numRows) {
-            //  m1_ik m2_kj -> ret_ij
-            ret.scalar.maddTo(m1.data, m1.index(i, k), m2.data, idx2, ret.data, ret.index(i, j))
-            i += 1
+          if (alpha == s.one) {
+            var i = 0
+            while (i < ret.numRows) {
+              s.maddTo(m1.data, i+k*m1.numRows, m2.data, idx2, ret.data, i+j*ret.numRows)
+              i += 1
+            }
+          }
+          else {
+            val alpha_m2_kj = s.mul(alpha, s.read(m2.data, idx2))
+            var i = 0
+            while (i < ret.numRows) {
+              s.maddTo(m1.data, i+k*m1.numRows, alpha_m2_kj, ret.data, i+j*ret.numRows)
+              i += 1
+            }
           }
           iter += 1
         }

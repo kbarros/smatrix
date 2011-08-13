@@ -4,7 +4,7 @@ package smatrix
 object MatrixDims {
   def checkDims(numRows: Int, numCols: Int) {
     require(numRows > 0 && numCols > 0,
-        "Cannot build matrix with non-positive dimensions [%d, %d].".format(numRows, numCols))
+        "Matrix dimensions must be positive, found [%d, %d].".format(numRows, numCols))
   }
   
   def checkKey(m: MatrixDims, i: Int, j: Int) {
@@ -39,6 +39,12 @@ object MatrixDims {
     require(m1.numRows == 1 && m2.numCols == 1,
         "Dot product expects row and column vectors, found [%d, %d] * [%d, %d].".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
   }
+  
+  def checkTrace(m: MatrixDims) {
+    require(m.numRows == m.numCols,
+        "Matrix trace expects a square matrix, found [%d, %d].".format(m.numRows, m.numCols))
+  }
+
 }
 
 trait MatrixDims {

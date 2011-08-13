@@ -66,13 +66,12 @@ Usage example
 A Work in Progress
 ------------------
 
-I'm developing smatrix for use in my physics research. The interfaces are subject to change. Your suggestions and contributions are welcome.
+I'm developing smatrix for use in my physics research. Your suggestions and contributions are welcome.
 
 **TODO list**
 
-Things I'm planning to do once there's a need.
+Things to do; to be prioritized by user feedback.
 
-- Expose gemm operation
 - Get specialization working with parallel "bare" heirarchy
 - Add ATLAS backend; JNA name remapping? Test on Linux
 - Hermitian matrices, perhaps others (Triangular, Tridiagonal, Unitary)

@@ -1,22 +1,6 @@
 package smatrix
 
 
-object Matrix {
-  def addTo[S <: Scalar, M1[_] <: MatrixDims, M2[_] <: MatrixDims]
-        (neg: Boolean, m: M1[S], ret: M2[S])
-        (implicit ma: MatrixSingleAdder[S, M1, M2]) {
-    MatrixDims.checkAddTo(m, ret)
-    ma.addTo(neg, m, ret)
-  }
-
-  def maddTo[S <: Scalar, M1[_] <: MatrixDims, M2[_] <: MatrixDims, M3[_] <: MatrixDims]
-        (m1: M1[S], m2: M2[S], ret: M3[S])
-        (implicit mm: MatrixMultiplier[S, M1, M2, M3]) {
-    MatrixDims.checkMulTo(m1, m2, ret)
-    mm.maddTo(m1, m2, ret)
-  }
-}
-
 
 // TODO: Specialize S#A for apply/update methods
 // Eclipse crashes when "s" parameter is renamed, and file is saved 
@@ -63,6 +47,16 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     ret
   }
 
+  /** Copies the matrix elements to an array in column major order (rows change most rapidly).
+   */
+  def toArray(implicit m: Manifest[S#A]): Array[S#A] = {
+    val ret = Array.fill[S#A](numRows*numCols)(scalar.zero)
+    for ((i, j) <- definedIndices) {
+      ret(i + j*numRows) = this(i, j)
+    }
+    ret
+  }
+
   /** Builds a new matrix by applying a function to all elements of this matrix.
    */
   // The parameter A2 is for type inference only
@@ -71,16 +65,69 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     mb.map(this)(f)
   }
   
+    
+  /** Returns the Frobenius norm squared of this matrix (i.e., the square of the Euclidean norm of the vector of matrix elements).
+   */
+  def norm2: S#A = {
+    var ret = scalar.zero
+    for ((i, j) <- definedIndices) {
+      val x = this(i, j)
+      ret = scalar.add(ret, scalar.mul(x, scalar.conj(x)))
+    }
+    ret
+  }
+
+  /** Sums all matrix elements.
+   */
+  def sum: S#A = {
+    var ret = scalar.zero
+    for ((i, j) <- definedIndices) {
+      ret = scalar.add(ret, this(i, j))
+    }
+    ret
+  }
+  
+  /**
+   * Returns the matrix trace, the sum of the diagonal elements
+   */
+  def trace: S#A = {
+    MatrixDims.checkTrace(this)
+    var ret = scalar.zero
+    for (i <- 0 until numRows) {
+      ret = scalar.add(ret, this(i, i))
+    }
+    ret
+  }
+  
+  /**
+   * Modifies this matrix by setting all elements to zero.
+   */
+  def clear(): this.type = {
+    transform(_ => scalar.zero)
+  }
+  
   /** Returns this matrix scaled by a parameter.
    */
   def *[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](x: S#A)(implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.mul(_, x))
   }
 
+  /** Modifies this matrix by scaling with a parameter. 
+   */
+  def *=(x: S#A): this.type = {
+    transform(scalar.mul(_, x))
+  }
+
   /** Returns this matrix scaled by the inverse of a parameter.
    */
   def /[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](x: S#A)(implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.div(_, x))
+  }
+
+  /** Modifies this matrix by scaling with a parameter inverse.
+   */
+  def /=(x: S#A): this.type = {
+    transform(scalar.div(_, x))
   }
 
   /** Returns the element-wise negation of this matrix.
@@ -107,37 +154,6 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     tran(mb).transform(scalar.conj(_))
   }
   
-  /** Returns the Frobenius norm squared of this matrix (i.e., the square of the Euclidean norm of the vector of matrix elements).
-   */
-  def norm2: S#A = {
-    var ret = scalar.zero
-    for ((i, j) <- definedIndices) {
-      val x = this(i, j)
-      ret = scalar.add(ret, scalar.mul(x, scalar.conj(x)))
-    }
-    ret
-  }
-
-  /** Sums all matrix elements.
-   */
-  def sum: S#A = {
-    var ret = scalar.zero
-    for ((i, j) <- definedIndices) {
-      ret = scalar.add(ret, this(i, j))
-    }
-    ret
-  }
-  
-  /** Copies the matrix elements to an array in column major order (rows change most rapidly).
-   */
-  def toArray(implicit m: Manifest[S#A]): Array[S#A] = {
-    val ret = Array.fill[S#A](numRows*numCols)(scalar.zero)
-    for ((i, j) <- definedIndices) {
-      ret(i + j*numRows) = this(i, j)
-    }
-    ret
-  }
-  
   /** Takes the dot product of this row matrix and a column matrix.
    */
   def dot[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
@@ -159,8 +175,42 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
                   mb: MatrixBuilder[S, M3]): M3[S] = {
     MatrixDims.checkMul(this, that)
     val ret = mb.zeros(numRows, that.numCols)
-    mm.maddTo(this, that, ret)
+    mm.maddTo(scalar.one, this, that, ret)
     ret
+  }
+
+  /** Modifies this matrix to become the product of two parameter matrices.
+   */
+  def :=*[M1[s <: Scalar] >: Repr[s] <: Matrix[s, M1], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
+        (m2: M2[S], m3: M3[S])
+        (implicit mm: MatrixMultiplier[S, M2, M3, M1]): this.type = {
+    MatrixDims.checkMulTo(m2, m3, this)
+    this.clear()
+    require((this ne m2) && (this ne m3), "Illegal aliasing of matrix product.")
+    mm.maddTo(scalar.one, m2, m3, this)
+    this
+  }
+
+  /** Accumulates the product of two parameter matrices into this one.
+   */
+  def +=*[M1[s <: Scalar] >: Repr[s] <: Matrix[s, M1], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
+        (m2: M2[S], m3: M3[S])
+        (implicit mm: MatrixMultiplier[S, M2, M3, M1]): this.type = {
+    MatrixDims.checkMulTo(m2, m3, this)
+    require((this ne m2) && (this ne m3), "Illegal aliasing of matrix product.")
+    mm.maddTo(scalar.one, m2, m3, this)
+    this
+  }
+
+  /** Modifies this matrix to become `alpha m2 m3 + beta this`
+   */
+  def gemm[M1[s <: Scalar] >: Repr[s] <: Matrix[s, M1], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
+        (alpha: S#A, m2: M2[S], m3: M3[S], beta: S#A)
+        (implicit mm: MatrixMultiplier[S, M2, M3, M1]): this.type = {
+    MatrixDims.checkMulTo(m2, m3, this)
+    require((this ne m2) && (this ne m3), "Illegal aliasing of matrix product.")
+    mm.gemm(alpha, m2, m3, beta, this)
+    this
   }
 
   /** Adds this matrix with another.
@@ -175,6 +225,16 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     ret
   }
 
+  /** Accumulates another matrix into this one.
+   */
+  def +=[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
+        (that: M2[S])
+        (implicit ma: MatrixSingleAdder[S, M2, M1]): this.type = {
+    MatrixDims.checkAdd(this, that)
+    ma.addTo(neg=false, that, this)
+    this
+  }
+
   /** Subtracts another matrix from this one.
    */
   def -[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
@@ -186,7 +246,28 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     ma.addTo(sub=true, this, that, ret)
     ret
   }
+
+  /** Accumulates the negative of another matrix into this one.
+   */
+  def -=[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
+        (that: M2[S])
+        (implicit ma: MatrixSingleAdder[S, M2, M1]): this.type = {
+    MatrixDims.checkAdd(this, that)
+    ma.addTo(neg=true, that, this)
+    this
+  }
+
+  /**
+   * Modifies this matrix by copying from another one.
+   */
+  def :=[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
+        (that: M2[S])
+        (implicit ma: MatrixSingleAdder[S, M2, M1]): this.type = {
+    clear()
+    this.+=[M1, M2](that)
+  }
   
+
   /** Generates a string representation of this matrix.
    */
   override def toString = {
@@ -247,8 +328,27 @@ class MatrixAdder[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[_ <: Scalar]
   }
 }
 
-abstract class MatrixMultiplier[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[_ <: Scalar]] {
-  def maddTo(m1: M1[S], m2: M2[S], ret: M3[S])
+abstract class MatrixMultiplier[S <: Scalar : ScalarOps, M1[_ <: Scalar], M2[_ <: Scalar], M3[s <: Scalar] <: Matrix[s, M3]] {
+  val zero = implicitly[ScalarOps[S]].zero
+  val one = implicitly[ScalarOps[S]].one
+  
+  /** ret := alpha m1 m2 + beta ret
+   */
+  def gemm(alpha: S#A, m1: M1[S], m2: M2[S], beta: S#A, ret: M3[S]) {
+    if (beta == zero)
+      ret.clear()
+    else if (beta == one)
+      ()
+    else {
+      ret *= beta
+    }
+    maddTo(alpha, m1, m2, ret)
+  }
+  
+  /** ret += alpha m1 m2
+   */
+  def maddTo(alpha: S#A, m1: M1[S], m2: M2[S], ret: M3[S])
+  
 }
 
 abstract class MatrixDotter[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar]] {
