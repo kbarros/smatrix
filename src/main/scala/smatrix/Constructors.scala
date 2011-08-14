@@ -2,20 +2,20 @@ package smatrix
 
 
 object Constructors {
-  val realFlt    = new Constructors[Scalar.RealFlt]
-  val realDbl    = new Constructors[Scalar.RealDbl]
-  val complexFlt = new Constructors[Scalar.ComplexFlt] {
+  object realFlt extends Constructors[Scalar.RealFlt]
+  object realDbl extends Constructors[Scalar.RealDbl]
+  object complexFlt extends Constructors[Scalar.ComplexFlt] {
     implicit def floatToComplexf[T <% Float](re: T) = Complexf(re, 0)
     val I = Complexf(0, 1)
   }
-  val complexDbl = new Constructors[Scalar.ComplexDbl] {
+  object complexDbl extends Constructors[Scalar.ComplexDbl] {
     implicit def doubleToComplexd[T <% Double](re: T) = Complexd(re, 0)
     val I = Complexd(0, 1)
   }
 }
 
 
-class Constructors[S <: Scalar]() {
+class Constructors[S <: Scalar] {
   // --------------------------------------
   // Dense constructors
   
