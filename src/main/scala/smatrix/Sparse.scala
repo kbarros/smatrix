@@ -148,7 +148,7 @@ trait SparseBuilders {
 trait SparseAdders {
   implicit def sparseIntoSparseAdder[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixSingleAdder[S, M, HashSparse] {
     def addTo(neg: Boolean, m: M[S], ret: HashSparse[S]) = {
-      MatrixDims.checkAddTo(m, ret)
+      MatrixDims.checkAdd(m, ret)
       for ((i, j) <- m.definedIndices)
         ret(i, j) = if (neg) ret.scalar.sub(ret(i, j), m(i, j)) else ret.scalar.add(ret(i, j), m(i, j))
     }
@@ -156,7 +156,7 @@ trait SparseAdders {
   
   implicit def sparseIntoDenseAdder[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixSingleAdder[S, M, Dense] {
     def addTo(neg: Boolean, m: M[S], ret: Dense[S]) = {
-      MatrixDims.checkAddTo(m, ret)
+      MatrixDims.checkAdd(m, ret)
       for ((i, j) <- m.definedIndices)
         ret(i, j) = if (neg) ret.scalar.sub(ret(i, j), m(i, j)) else ret.scalar.add(ret(i, j), m(i, j))
     }
@@ -174,10 +174,10 @@ trait SparseAdders {
 
 
 trait SparseMultipliersLowPriority {
-  implicit def sparseDenseMultiplier[S <: Scalar : ScalarOps, M[s <: Scalar] <: Sparse[s, M]] = new MatrixMultiplier[S, M, Dense, Dense] {
+  implicit def sparseDenseMultiplier[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixMultiplier[S, M, Dense, Dense] {
     def maddTo(alpha: S#A, m1: M[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      val s = implicitly[ScalarOps[S]]
+      val s = ret.scalar
       for ((i, k) <- m1.definedIndices;
            val alpha_m1_ik = s.mul(alpha, m1(i, k));
            j <- 0 until ret.numCols) {
@@ -185,10 +185,10 @@ trait SparseMultipliersLowPriority {
       }
     }
   }
-  implicit def denseSparseMultiplier[S <: Scalar : ScalarOps, M[s <: Scalar] <: Sparse[s, M]] = new MatrixMultiplier[S, Dense, M, Dense] {
+  implicit def denseSparseMultiplier[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixMultiplier[S, Dense, M, Dense] {
     def maddTo(alpha: S#A, m1: Dense[S], m2: M[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      val s = implicitly[ScalarOps[S]]
+      val s = ret.scalar
       for ((k, j) <- m2.definedIndices;
            val alpha_m2_kj = s.mul(alpha, m2(k, j));
            i <- 0 until ret.numRows) {
@@ -199,10 +199,10 @@ trait SparseMultipliersLowPriority {
 }
 
 trait SparseMultipliers extends SparseMultipliersLowPriority {
-  implicit def packedSparseDenseMultiplier[S <: Scalar : ScalarOps] = new MatrixMultiplier[S, PackedSparse, Dense, Dense] {
+  implicit def packedSparseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, PackedSparse, Dense, Dense] {
     def maddTo(alpha: S#A, m1: PackedSparse[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      val s = implicitly[ScalarOps[S]]
+      val s = ret.scalar
       var i = 0
       while (i < m1.numRows) {
         var iter = 0
@@ -230,10 +230,10 @@ trait SparseMultipliers extends SparseMultipliersLowPriority {
       }
     }
   }
-  implicit def densePackedSparseMultiplier[S <: Scalar : ScalarOps] = new MatrixMultiplier[S, Dense, PackedSparse, Dense] {
+  implicit def densePackedSparseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, PackedSparse, Dense] {
     def maddTo(alpha: S#A, m1: Dense[S], m2: PackedSparse[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      val s = implicitly[ScalarOps[S]]
+      val s = ret.scalar
       var k = 0
       while (k < m1.numCols) {
         var iter = 0

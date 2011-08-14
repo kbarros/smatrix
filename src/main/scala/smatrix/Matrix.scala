@@ -3,7 +3,7 @@ package smatrix
 
 
 // TODO: Specialize S#A for apply/update methods
-// Eclipse crashes when "s" parameter is renamed, and file is saved 
+
 abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, Repr]]
     (val numRows: Int, val numCols: Int) extends MatrixDims { self: Repr[S] =>
   MatrixDims.checkDims(numRows, numCols)
@@ -184,11 +184,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   def :=*[M1[s <: Scalar] >: Repr[s] <: Matrix[s, M1], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (m2: M2[S], m3: M3[S])
         (implicit mm: MatrixMultiplier[S, M2, M3, M1]): this.type = {
-    MatrixDims.checkMulTo(m2, m3, this)
-    this.clear()
-    require((this ne m2) && (this ne m3), "Illegal aliasing of matrix product.")
-    mm.maddTo(scalar.one, m2, m3, this)
-    this
+    gemm[M1, M2, M3](scalar.one, m2, m3, scalar.zero)
   }
 
   /** Accumulates the product of two parameter matrices into this one.
@@ -196,10 +192,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   def +=*[M1[s <: Scalar] >: Repr[s] <: Matrix[s, M1], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (m2: M2[S], m3: M3[S])
         (implicit mm: MatrixMultiplier[S, M2, M3, M1]): this.type = {
-    MatrixDims.checkMulTo(m2, m3, this)
-    require((this ne m2) && (this ne m3), "Illegal aliasing of matrix product.")
-    mm.maddTo(scalar.one, m2, m3, this)
-    this
+    gemm[M1, M2, M3](scalar.one, m2, m3, scalar.one)
   }
 
   /** Modifies this matrix to become `alpha m2 m3 + beta this`
@@ -208,8 +201,13 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
         (alpha: S#A, m2: M2[S], m3: M3[S], beta: S#A)
         (implicit mm: MatrixMultiplier[S, M2, M3, M1]): this.type = {
     MatrixDims.checkMulTo(m2, m3, this)
-    require((this ne m2) && (this ne m3), "Illegal aliasing of matrix product.")
-    mm.gemm(alpha, m2, m3, beta, this)
+    if (beta == scalar.zero)
+      clear()
+    else if (beta == scalar.one)
+      ()
+    else
+      this *= beta
+    mm.maddTo(alpha, m2, m3, this)
     this
   }
 
@@ -263,6 +261,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   def :=[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
         (that: M2[S])
         (implicit ma: MatrixSingleAdder[S, M2, M1]): this.type = {
+    MatrixDims.checkAssign(that, this)
     clear()
     this.+=[M1, M2](that)
   }
@@ -328,24 +327,8 @@ class MatrixAdder[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[_ <: Scalar]
   }
 }
 
-abstract class MatrixMultiplier[S <: Scalar : ScalarOps, M1[_ <: Scalar], M2[_ <: Scalar], M3[s <: Scalar] <: Matrix[s, M3]] {
-  val zero = implicitly[ScalarOps[S]].zero
-  val one = implicitly[ScalarOps[S]].one
-  
-  /** ret := alpha m1 m2 + beta ret
-   */
-  def gemm(alpha: S#A, m1: M1[S], m2: M2[S], beta: S#A, ret: M3[S]) {
-    if (beta == zero)
-      ret.clear()
-    else if (beta == one)
-      ()
-    else {
-      ret *= beta
-    }
-    maddTo(alpha, m1, m2, ret)
-  }
-  
-  /** ret += alpha m1 m2
+abstract class MatrixMultiplier[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[s <: Scalar] <: Matrix[s, M3]] {
+  /** Assigns `ret += alpha m1 m2`
    */
   def maddTo(alpha: S#A, m1: M1[S], m2: M2[S], ret: M3[S])
   

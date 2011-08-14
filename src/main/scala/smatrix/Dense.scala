@@ -114,10 +114,10 @@ trait DenseAdders {
 
 
 trait DenseMultipliers {
-  implicit def denseDenseMultiplier[S <: Scalar : ScalarOps] = new MatrixMultiplier[S, Dense, Dense, Dense] {
+  implicit def denseDenseMultiplier[S <: Scalar] = new MatrixMultiplier[S, Dense, Dense, Dense] {
     def maddTo(alpha: S#A, m1: Dense[S], m2: Dense[S], ret: Dense[S]) {
       MatrixDims.checkMulTo(m1, m2, ret)
-      val s = implicitly[ScalarOps[S]]
+      val s = ret.scalar
       if (alpha == s.zero) {
         // no-op
       }
