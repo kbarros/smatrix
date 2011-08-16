@@ -98,18 +98,17 @@ trait DenseBuilders {
 
 
 trait DenseAdders {
-  implicit def denseIntoDenseAdder[S <: Scalar] = new MatrixSingleAdder[S, Dense, Dense] {
-    def addTo(neg: Boolean, m: Dense[S], ret: Dense[S]) = {
+  implicit def denseDenseAdder[S <: Scalar] = new MatrixAdder[S, Dense, Dense] {
+    def addTo(alpha: S#A, m: Dense[S], ret: Dense[S]) = {
       MatrixDims.checkAdd(m, ret)
       for (i <- 0 until ret.numRows;
            j <- 0 until ret.numCols) {
-        ret(i, j) = if (neg) ret.scalar.sub(ret(i, j), m(i, j)) else ret.scalar.add(ret(i, j), m(i, j))
+        ret.scalar.maddTo(m.data, m.index(i, j), alpha, ret.data, ret.index(i, j))
       }
     }
   }
   
-  implicit def denseDenseAdder[S <: Scalar] =
-    new MatrixAdder[S, Dense, Dense, Dense](denseIntoDenseAdder, denseIntoDenseAdder)
+  implicit def denseDensePairAdder[S <: Scalar] = new MatrixPairAdder[S, Dense, Dense, Dense]
 }
 
 
@@ -161,12 +160,22 @@ trait DenseMultipliers {
   }
   
   implicit def denseDenseDotter[S <: Scalar] = new MatrixDotter[S, Dense, Dense] {
-    def dotTo(m1: Dense[S], m2: Dense[S], ret: RawData[S#Raw, S#Buf]) {
-      MatrixDims.checkDot(m1, m2)
-      var i = 0
-      while (i < m1.numCols) {
-        m1.scalar.maddTo(m1.data, i, m2.data, i, ret, 0)
-        i += 1
+    def dotTo(m1: Dense[S], m2: Dense[S], transpose: Boolean, ret: RawData[S#Raw, S#Buf]) {
+      MatrixDims.checkDot(m1, m2, transpose)
+      val s = m1.scalar
+      s.write(ret, 0, s.zero)
+      if (transpose == false || (m1.numRows min m1.numCols) == 1) {
+        var iter = 0
+        while (iter < m1.numRows * m1.numCols) {
+          s.maddTo(m1.data, iter, m2.data, iter, ret, 0)
+          iter += 1
+        }
+      }
+      else {
+        for (i <- 0 until m1.numRows;
+             j <- 0 until m1.numCols) {
+          s.maddTo(m1.data, m1.index(i, j), m2.data, m2.index(j, i), ret, 0)
+        }
       }
     }
   }

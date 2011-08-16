@@ -36,10 +36,15 @@ object MatrixDims {
     require((m1 ne ret) && (m2 ne ret), "Illegal aliasing in matrix product.")
   }
   
-  def checkDot(m1: MatrixDims, m2: MatrixDims) {
-    checkMul(m1, m2)
-    require(m1.numRows == 1 && m2.numCols == 1,
-        "Dot product expects row and column vectors, found [%d, %d] * [%d, %d].".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
+  def checkDot(m1: MatrixDims, m2: MatrixDims, transpose: Boolean) {
+    if (transpose == false) {
+      require(m1.numRows == m2.numRows && m1.numCols == m2.numCols,
+          "Dot product expects matrices of same shape, found [%d, %d] dot [%d, %d].".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
+    }
+    else {
+      require(m1.numRows == m2.numCols && m1.numCols == m2.numRows,
+          "Dot product expects matrices of same shape, found [%d, %d] dot [%d, %d]^T.".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))      
+    }
   }
   
   def checkTrace(m: MatrixDims) {

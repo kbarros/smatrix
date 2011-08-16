@@ -154,16 +154,42 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     tran(mb).transform(scalar.conj(_))
   }
   
-  /** Takes the dot product of this row matrix and a column matrix.
+  /** Sums the product of corresponding matrix elements, with optional transpose.
    */
   def dot[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
-      (that: M2[S])
+      (that: M2[S], transpose: Boolean = false)
       (implicit sb: ScalarBuilder[S], md: MatrixDotter[S, M1, M2]): S#A = {
-    MatrixDims.checkDot(this, that)
+    MatrixDims.checkDot(this, that, transpose)
     val accum = sb.build(1)
-    md.dotTo(this, that, accum)
+    md.dotTo(this, that, transpose, accum)
     val ret = scalar.read(accum, 0)
     accum.dispose()
+    ret
+  }
+  
+  /** Adds this matrix with another.
+   */
+  def +[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
+        (that: M2[S])
+        (implicit ma: MatrixPairAdder[S, M1, M2, M3],
+                  mb: MatrixBuilder[S, M3]): M3[S] = {
+    MatrixDims.checkAdd(this, that)
+    val ret = mb.zeros(numRows, numCols)
+    ma._1.addTo(scalar.one, this, ret)
+    ma._2.addTo(scalar.one, that, ret)
+    ret
+  }
+
+  /** Subtracts another matrix from this one.
+   */
+  def -[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
+        (that: M2[S])
+        (implicit ma: MatrixPairAdder[S, M1, M2, M3],
+                  mb: MatrixBuilder[S, M3]): M3[S] = {
+    MatrixDims.checkAdd(this, that)
+    val ret = mb.zeros(numRows, numCols)
+    ma._1.addTo(scalar.one, this, ret)
+    ma._2.addTo(scalar.neg(scalar.one), that, ret)
     ret
   }
 
@@ -179,7 +205,61 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     ret
   }
 
-  /** Modifies this matrix to become the product of two parameter matrices.
+  
+  /**
+   * Assigns this matrix from another.
+   */
+  def :=[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
+        (that: M2[S])
+        (implicit ma: MatrixAdder[S, M2, M1]): this.type = {
+    MatrixDims.checkAssign(that, this)
+    clear()
+    ma.addTo(scalar.one, that, this)
+    this
+  }
+
+  /** Assigns `this := this + that`.
+   */
+  def +=[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
+        (that: M2[S])
+        (implicit ma: MatrixAdder[S, M2, M1]): this.type = {
+    MatrixDims.checkAdd(this, that)
+    ma.addTo(scalar.one, that, this)
+    this
+  }
+
+  /** Assigns `this := this - that`.
+   */
+  def -=[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
+        (that: M2[S])
+        (implicit ma: MatrixAdder[S, M2, M1]): this.type = {
+    MatrixDims.checkAdd(this, that)
+    ma.addTo(scalar.neg(scalar.one), that, this)
+    this
+  }
+    
+  /** Assigns `this := alpha that`.
+   */
+  def :=*[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
+        (alpha: S#A, that: M2[S])
+        (implicit ma: MatrixAdder[S, M2, M1]): this.type = {
+    MatrixDims.checkAssign(that, this)
+    clear()
+    ma.addTo(alpha, that, this)
+    this
+  }
+
+  /** Assigns `this := this + alpha that`.
+   */
+  def +=*[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
+        (alpha: S#A, that: M2[S])
+        (implicit ma: MatrixAdder[S, M2, M1]): this.type = {
+    MatrixDims.checkAssign(that, this)
+    ma.addTo(alpha, that, this)
+    this
+  }
+
+  /** Assigns `this := m2 m3`.
    */
   def :=*[M1[s <: Scalar] >: Repr[s] <: Matrix[s, M1], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (m2: M2[S], m3: M3[S])
@@ -187,7 +267,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     gemm[M1, M2, M3](scalar.one, m2, m3, scalar.zero)
   }
 
-  /** Accumulates the product of two parameter matrices into this one.
+  /** Assigns `this := this + m2 m3`.
    */
   def +=*[M1[s <: Scalar] >: Repr[s] <: Matrix[s, M1], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (m2: M2[S], m3: M3[S])
@@ -195,7 +275,15 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     gemm[M1, M2, M3](scalar.one, m2, m3, scalar.one)
   }
 
-  /** Modifies this matrix to become `alpha m2 m3 + beta this`
+  /** Assigns `this := this - m2 m3`.
+   */
+  def -=*[M1[s <: Scalar] >: Repr[s] <: Matrix[s, M1], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
+        (m2: M2[S], m3: M3[S])
+        (implicit mm: MatrixMultiplier[S, M2, M3, M1]): this.type = {
+    gemm[M1, M2, M3](scalar.neg(scalar.one), m2, m3, scalar.one)
+  }
+
+  /** Assigns `this := alpha m2 m3 + beta this`
    */
   def gemm[M1[s <: Scalar] >: Repr[s] <: Matrix[s, M1], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
         (alpha: S#A, m2: M2[S], m3: M3[S], beta: S#A)
@@ -211,61 +299,6 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     this
   }
 
-  /** Adds this matrix with another.
-   */
-  def +[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
-        (that: M2[S])
-        (implicit ma: MatrixAdder[S, M1, M2, M3],
-                  mb: MatrixBuilder[S, M3]): M3[S] = {
-    MatrixDims.checkAdd(this, that)
-    val ret = mb.zeros(numRows, numCols)
-    ma.addTo(sub=false, this, that, ret)
-    ret
-  }
-
-  /** Accumulates another matrix into this one.
-   */
-  def +=[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
-        (that: M2[S])
-        (implicit ma: MatrixSingleAdder[S, M2, M1]): this.type = {
-    MatrixDims.checkAdd(this, that)
-    ma.addTo(neg=false, that, this)
-    this
-  }
-
-  /** Subtracts another matrix from this one.
-   */
-  def -[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
-        (that: M2[S])
-        (implicit ma: MatrixAdder[S, M1, M2, M3],
-                  mb: MatrixBuilder[S, M3]): M3[S] = {
-    MatrixDims.checkAdd(this, that)
-    val ret = mb.zeros(numRows, numCols)
-    ma.addTo(sub=true, this, that, ret)
-    ret
-  }
-
-  /** Accumulates the negative of another matrix into this one.
-   */
-  def -=[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
-        (that: M2[S])
-        (implicit ma: MatrixSingleAdder[S, M2, M1]): this.type = {
-    MatrixDims.checkAdd(this, that)
-    ma.addTo(neg=true, that, this)
-    this
-  }
-
-  /**
-   * Modifies this matrix by copying from another one.
-   */
-  def :=[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
-        (that: M2[S])
-        (implicit ma: MatrixSingleAdder[S, M2, M1]): this.type = {
-    MatrixDims.checkAssign(that, this)
-    clear()
-    this.+=[M1, M2](that)
-  }
-  
 
   /** Generates a string representation of this matrix.
    */
@@ -315,16 +348,10 @@ abstract class MatrixBuilder[S <: Scalar, Repr[_ <: Scalar]] {
   def map[S0 <: Scalar](m: Repr[S0])(f: S0#A => S#A): Repr[S]
 }
 
-abstract class MatrixSingleAdder[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar]] {
-  def addTo(neg: Boolean, m: M1[S], ret: M2[S])
-}
-
-class MatrixAdder[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[_ <: Scalar]]
-    (a13: MatrixSingleAdder[S, M1, M3], a23: MatrixSingleAdder[S, M2, M3]) {
-  def addTo(sub: Boolean, m1: M1[S], m2: M2[S], ret: M3[S]) {
-    a13.addTo(neg=false, m1, ret)
-    a23.addTo(neg=sub, m2, ret)
-  }
+abstract class MatrixAdder[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar]] {
+  /** Assigns `ret += alpha m`
+   */
+  def addTo(alpha: S#A, m: M1[S], ret: M2[S])
 }
 
 abstract class MatrixMultiplier[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[s <: Scalar] <: Matrix[s, M3]] {
@@ -335,5 +362,12 @@ abstract class MatrixMultiplier[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M
 }
 
 abstract class MatrixDotter[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar]] {
-  def dotTo(m1: M1[S], m2: M2[S], ret: RawData[S#Raw, S#Buf])
+  /** Assigns `ret = \sum_{ij} m1_{ij} m2_{ij}` with m2 optionally transposed.
+   */
+  def dotTo(m1: M1[S], m2: M2[S], transpose: Boolean, ret: RawData[S#Raw, S#Buf])
 }
+
+/** Used to resolve the return type for matrix addition and subtraction.  
+ */
+class MatrixPairAdder[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M3[_ <: Scalar]]
+  (implicit val _1: MatrixAdder[S, M1, M3], val _2: MatrixAdder[S, M2, M3])

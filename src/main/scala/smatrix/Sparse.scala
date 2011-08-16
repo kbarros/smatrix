@@ -146,30 +146,28 @@ trait SparseBuilders {
 
 
 trait SparseAdders {
-  implicit def sparseIntoSparseAdder[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixSingleAdder[S, M, HashSparse] {
-    def addTo(neg: Boolean, m: M[S], ret: HashSparse[S]) = {
+  implicit def sparseSparseAdder[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixAdder[S, M, HashSparse] {
+    def addTo(alpha: S#A, m: M[S], ret: HashSparse[S]) = {
       MatrixDims.checkAdd(m, ret)
       for ((i, j) <- m.definedIndices)
-        ret(i, j) = if (neg) ret.scalar.sub(ret(i, j), m(i, j)) else ret.scalar.add(ret(i, j), m(i, j))
+        ret(i, j) = ret.scalar.add(ret(i, j), ret.scalar.mul(m(i, j), alpha))
     }
   }
   
-  implicit def sparseIntoDenseAdder[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixSingleAdder[S, M, Dense] {
-    def addTo(neg: Boolean, m: M[S], ret: Dense[S]) = {
+  implicit def sparseDenseAdder[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixAdder[S, M, Dense] {
+    def addTo(alpha: S#A, m: M[S], ret: Dense[S]) = {
       MatrixDims.checkAdd(m, ret)
       for ((i, j) <- m.definedIndices)
-        ret(i, j) = if (neg) ret.scalar.sub(ret(i, j), m(i, j)) else ret.scalar.add(ret(i, j), m(i, j))
+        ret(i, j) = ret.scalar.add(ret(i, j), ret.scalar.mul(m(i, j), alpha))
     }
   }
 
-  implicit def sparseSparseAdder[S <: Scalar, M1[s <: Scalar] <: Sparse[s, M1], M2[s <: Scalar] <: Sparse[s, M2]] =
-    new MatrixAdder[S, M1, M2, HashSparse](sparseIntoSparseAdder, sparseIntoSparseAdder)
-
-  implicit def denseSparseAdder[S <: Scalar, M2[s <: Scalar] <: Sparse[s, M2]] =
-    new MatrixAdder[S, Dense, M2, Dense](Dense.denseIntoDenseAdder, sparseIntoDenseAdder)
-
-  implicit def sparseDenseAdder[S <: Scalar, M1[s <: Scalar] <: Sparse[s, M1]] =
-    new MatrixAdder[S, M1, Dense, Dense](sparseIntoDenseAdder, Dense.denseIntoDenseAdder)
+  implicit def sparseSparsePairAdder[S <: Scalar, M1[s <: Scalar] <: Sparse[s, M1], M2[s <: Scalar] <: Sparse[s, M2]] =
+    new MatrixPairAdder[S, M1, M2, HashSparse]
+  implicit def denseSparsePairAdder[S <: Scalar, M2[s <: Scalar] <: Sparse[s, M2]] =
+    new MatrixPairAdder[S, Dense, M2, Dense]
+  implicit def sparseDensePairAdder[S <: Scalar, M1[s <: Scalar] <: Sparse[s, M1]] =
+    new MatrixPairAdder[S, M1, Dense, Dense]
 }
 
 
