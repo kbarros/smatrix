@@ -160,22 +160,18 @@ trait DenseMultipliers {
   }
   
   implicit def denseDenseDotter[S <: Scalar] = new MatrixDotter[S, Dense, Dense] {
-    def dotTo(m1: Dense[S], m2: Dense[S], transpose: Boolean, ret: RawData[S#Raw, S#Buf]) {
-      MatrixDims.checkDot(m1, m2, transpose)
+    def dotTo(m1: Dense[S], m2: Dense[S], ret: RawData[S#Raw, S#Buf]) {
+      MatrixDims.checkDot(m1, m2)
       val s = m1.scalar
       s.write(ret, 0, s.zero)
-      if (transpose == false || (m1.numRows min m1.numCols) == 1) {
-        var iter = 0
-        while (iter < m1.numRows * m1.numCols) {
-          s.maddTo(m1.data, iter, m2.data, iter, ret, 0)
-          iter += 1
+      var i = 0
+      while (i < m1.numRows) {
+        var j = 0
+        while (j < m1.numCols) {
+          s.maddTo(m1.data, i + m1.numRows*j, m2.data, j + m2.numRows*i, ret, 0)
+          j += 1
         }
-      }
-      else {
-        for (i <- 0 until m1.numRows;
-             j <- 0 until m1.numCols) {
-          s.maddTo(m1.data, m1.index(i, j), m2.data, m2.index(j, i), ret, 0)
-        }
+        i += 1
       }
     }
   }

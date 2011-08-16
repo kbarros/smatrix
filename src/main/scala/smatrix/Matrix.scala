@@ -47,50 +47,49 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     mb.map(this)(f)
   }
 
-  /** Returns this matrix scaled by a parameter.
+  /** This matrix scaled by a parameter.
    */
   def *[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](x: S#A)(implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.mul(_, x))
   }
 
-  /** Returns this matrix scaled by the inverse of a parameter.
+  /** This matrix scaled by the inverse of a parameter.
    */
   def /[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](x: S#A)(implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.div(_, x))
   }
 
-  /** Returns the element-wise negation of this matrix.
+  /** The negation of this matrix.
    */
   def unary_-[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.neg(_))
   }
 
-  /** Returns the element-wise conjugate of this matrix.
+  /** The complex conjugate of this matrix.
    */
   def conj[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.conj(_))
   }
 
-  /** Returns the transpose of this matrix.
+  /** The transpose of this matrix.
    */
   def tran[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     mb.transpose(this)
   }
   
-  /** Returns the hermitian conjugate (dagger) of this matrix.
+  /** The hermitian conjugate (dagger) of this matrix.
    */
   def dag[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     tran(mb).transform(scalar.conj(_))
   }
   
-  /** Sums the product of corresponding matrix elements, with optional transpose.
+  /** The dot product of this matrix with another, Tr(A B)
    */
   def dot[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
-      (that: M2[S], transpose: Boolean = false)
-      (implicit sb: ScalarBuilder[S], md: MatrixDotter[S, M1, M2]): S#A = {
-    MatrixDims.checkDot(this, that, transpose)
+      (that: M2[S])(implicit sb: ScalarBuilder[S], md: MatrixDotter[S, M1, M2]): S#A = {
+    MatrixDims.checkDot(this, that)
     val accum = sb.build(1)
-    md.dotTo(this, that, transpose, accum)
+    md.dotTo(this, that, accum)
     val ret = scalar.read(accum, 0)
     accum.dispose()
     ret
@@ -248,7 +247,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   }
 
     
-  /** Returns the Frobenius norm squared of this matrix (i.e., the square of the Euclidean norm of the vector of matrix elements).
+  /** The Frobenius norm squared of this matrix, Tr(A^dag A).
    */
   def norm2: S#A = {
     var ret = scalar.zero
@@ -259,7 +258,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     ret
   }
 
-  /** Sums all matrix elements.
+  /** The sum of all matrix elements.
    */
   def sum: S#A = {
     var ret = scalar.zero
@@ -270,7 +269,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   }
   
   /**
-   * Returns the matrix trace, the sum of the diagonal elements
+   * The matrix trace, \sum A_{ii}
    */
   def trace: S#A = {
     MatrixDims.checkTrace(this)
@@ -362,9 +361,9 @@ abstract class MatrixMultiplier[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M
 }
 
 abstract class MatrixDotter[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar]] {
-  /** Assigns `ret = \sum_{ij} m1_{ij} m2_{ij}` with m2 optionally transposed.
+  /** Assigns `ret = Tr(m1 m2) = \sum_{ij} m1_{ij} m2_{ji}`
    */
-  def dotTo(m1: M1[S], m2: M2[S], transpose: Boolean, ret: RawData[S#Raw, S#Buf])
+  def dotTo(m1: M1[S], m2: M2[S], ret: RawData[S#Raw, S#Buf])
 }
 
 /** Used to resolve the return type for matrix addition and subtraction.  
