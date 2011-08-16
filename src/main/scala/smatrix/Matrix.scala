@@ -38,24 +38,6 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   def duplicate[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](implicit mb: MatrixBuilder[S, That]): That[S] = {
     mb.duplicate(this)
   }
-  
-  /** Converts this matrix to a dense matrix.
-   */
-  def toDense(implicit mb: MatrixBuilder[S, Dense]): Dense[S] = {
-    val ret = mb.zeros(numRows, numCols)
-    for ((i, j) <- definedIndices) { ret(i, j) = this(i, j) }
-    ret
-  }
-
-  /** Copies the matrix elements to an array in column major order (rows change most rapidly).
-   */
-  def toArray(implicit m: Manifest[S#A]): Array[S#A] = {
-    val ret = Array.fill[S#A](numRows*numCols)(scalar.zero)
-    for ((i, j) <- definedIndices) {
-      ret(i + j*numRows) = this(i, j)
-    }
-    ret
-  }
 
   /** Builds a new matrix by applying a function to all elements of this matrix.
    */
@@ -64,70 +46,17 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
       (f: S#A => S2#A)(implicit scalar2: ScalarOps[S2], mb: MatrixBuilder[S2, That]): That[S2] = {
     mb.map(this)(f)
   }
-  
-    
-  /** Returns the Frobenius norm squared of this matrix (i.e., the square of the Euclidean norm of the vector of matrix elements).
-   */
-  def norm2: S#A = {
-    var ret = scalar.zero
-    for ((i, j) <- definedIndices) {
-      val x = this(i, j)
-      ret = scalar.add(ret, scalar.mul(x, scalar.conj(x)))
-    }
-    ret
-  }
 
-  /** Sums all matrix elements.
-   */
-  def sum: S#A = {
-    var ret = scalar.zero
-    for ((i, j) <- definedIndices) {
-      ret = scalar.add(ret, this(i, j))
-    }
-    ret
-  }
-  
-  /**
-   * Returns the matrix trace, the sum of the diagonal elements
-   */
-  def trace: S#A = {
-    MatrixDims.checkTrace(this)
-    var ret = scalar.zero
-    for (i <- 0 until numRows) {
-      ret = scalar.add(ret, this(i, i))
-    }
-    ret
-  }
-  
-  /**
-   * Modifies this matrix by setting all elements to zero.
-   */
-  def clear(): this.type = {
-    transform(_ => scalar.zero)
-  }
-  
   /** Returns this matrix scaled by a parameter.
    */
   def *[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](x: S#A)(implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.mul(_, x))
   }
 
-  /** Modifies this matrix by scaling with a parameter. 
-   */
-  def *=(x: S#A): this.type = {
-    transform(scalar.mul(_, x))
-  }
-
   /** Returns this matrix scaled by the inverse of a parameter.
    */
   def /[That[s <: Scalar] >: Repr[s] <: Matrix[s, That]](x: S#A)(implicit mb: MatrixBuilder[S, That]): That[S] = {
     duplicate(mb).transform(scalar.div(_, x))
-  }
-
-  /** Modifies this matrix by scaling with a parameter inverse.
-   */
-  def /=(x: S#A): this.type = {
-    transform(scalar.div(_, x))
   }
 
   /** Returns the element-wise negation of this matrix.
@@ -205,7 +134,14 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     ret
   }
 
-  
+      
+  /**
+   * Assigns `this := 0`.
+   */
+  def clear(): this.type = {
+    transform(_ => scalar.zero)
+  }
+
   /**
    * Assigns this matrix from another.
    */
@@ -216,6 +152,18 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     clear()
     ma.addTo(scalar.one, that, this)
     this
+  }
+
+  /** Assigns `this := alpha this`. 
+   */
+  def *=(alpha: S#A): this.type = {
+    transform(scalar.mul(alpha, _))
+  }
+
+  /** Assigns `this := (1 / alpha) this`. 
+   */
+  def /=(x: S#A): this.type = {
+    transform(scalar.div(_, x))
   }
 
   /** Assigns `this := this + that`.
@@ -237,7 +185,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     ma.addTo(scalar.neg(scalar.one), that, this)
     this
   }
-    
+
   /** Assigns `this := alpha that`.
    */
   def :=*[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
@@ -299,6 +247,58 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     this
   }
 
+    
+  /** Returns the Frobenius norm squared of this matrix (i.e., the square of the Euclidean norm of the vector of matrix elements).
+   */
+  def norm2: S#A = {
+    var ret = scalar.zero
+    for ((i, j) <- definedIndices) {
+      val x = this(i, j)
+      ret = scalar.add(ret, scalar.mul(x, scalar.conj(x)))
+    }
+    ret
+  }
+
+  /** Sums all matrix elements.
+   */
+  def sum: S#A = {
+    var ret = scalar.zero
+    for ((i, j) <- definedIndices) {
+      ret = scalar.add(ret, this(i, j))
+    }
+    ret
+  }
+  
+  /**
+   * Returns the matrix trace, the sum of the diagonal elements
+   */
+  def trace: S#A = {
+    MatrixDims.checkTrace(this)
+    var ret = scalar.zero
+    for (i <- 0 until numRows) {
+      ret = scalar.add(ret, this(i, i))
+    }
+    ret
+  }
+
+  
+  /** Converts this matrix to a dense matrix.
+   */
+  def toDense(implicit mb: MatrixBuilder[S, Dense]): Dense[S] = {
+    val ret = mb.zeros(numRows, numCols)
+    for ((i, j) <- definedIndices) { ret(i, j) = this(i, j) }
+    ret
+  }
+
+  /** Copies the matrix elements to an array in column major order (rows change most rapidly).
+   */
+  def toArray(implicit m: Manifest[S#A]): Array[S#A] = {
+    val ret = Array.fill[S#A](numRows*numCols)(scalar.zero)
+    for ((i, j) <- definedIndices) {
+      ret(i + j*numRows) = this(i, j)
+    }
+    ret
+  }
 
   /** Generates a string representation of this matrix.
    */
