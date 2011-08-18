@@ -4,7 +4,8 @@ import java.nio.{DoubleBuffer, FloatBuffer}
 import java.nio.Buffer
 
 
-// TODO: remember why ScalarOps can't be rolled into Scalar
+// Note: traits Scalar and ScalarOps contain the types and operations, respectively.
+// These are distinct for ease of constraining two matrices to have the same scalar type.
 
 object Scalar {
   trait RealTyp    extends Scalar
@@ -42,10 +43,10 @@ object ScalarOps {
     def components = 1
     def read(data: Data, i: Int): Float = data(i)
     def write(data: Data, i: Int, x: Float): Unit = data(i) = x
-    override def maddTo(d1: Data, i1: Int, x2: Float, d3: Data, i3: Int) {
+    override def maddTo(c1: Boolean, d1: Data, i1: Int, x2: Float, d3: Data, i3: Int) {
       d3(i3) += d1(i1) * x2
     }
-    override def maddTo(d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
+    override def maddTo(c1: Boolean, d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
       d3(i3) += d1(i1) * d2(i2)
     }
   }
@@ -63,10 +64,10 @@ object ScalarOps {
     def components = 1
     def read(data: Data, i: Int): Double = data(i)
     def write(data: Data, i: Int, x: Double): Unit = data(i) = x
-    override def maddTo(d1: Data, i1: Int, x2: Double, d3: Data, i3: Int) {
+    override def maddTo(c1: Boolean, d1: Data, i1: Int, x2: Double, d3: Data, i3: Int) {
       d3(i3) += d1(i1) * x2
     }
-    override def maddTo(d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
+    override def maddTo(c1: Boolean, d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
       d3(i3) += d1(i1) * d2(i2)
     }
   }
@@ -87,15 +88,15 @@ object ScalarOps {
       data(2*i+0) = x.re
       data(2*i+1) = x.im
     }
-    override def maddTo(d1: Data, i1: Int, x2: Complexf, d3: Data, i3: Int) {
+    override def maddTo(c1: Boolean, d1: Data, i1: Int, x2: Complexf, d3: Data, i3: Int) {
       val x1_re = d1(2*i1+0)
-      val x1_im = d1(2*i1+1)
+      val x1_im = (if (c1) -1 else +1)*d1(2*i1+1)
       d3(2*i3+0) += x1_re*x2.re - x1_im*x2.im
       d3(2*i3+1) += x1_re*x2.im + x1_im*x2.re
     }
-    override def maddTo(d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
+    override def maddTo(c1: Boolean, d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
       val x1_re = d1(2*i1+0)
-      val x1_im = d1(2*i1+1)
+      val x1_im = (if (c1) -1 else +1)*d1(2*i1+1)
       val x2_re = d2(2*i2+0)
       val x2_im = d2(2*i2+1)
       d3(2*i3+0) += x1_re*x2_re - x1_im*x2_im
@@ -119,15 +120,15 @@ object ScalarOps {
       data(2*i+0) = x.re
       data(2*i+1) = x.im
     }
-    override def maddTo(d1: Data, i1: Int, x2: Complexd, d3: Data, i3: Int) {
+    override def maddTo(c1: Boolean, d1: Data, i1: Int, x2: Complexd, d3: Data, i3: Int) {
       val x1_re = d1(2*i1+0)
-      val x1_im = d1(2*i1+1)
+      val x1_im = (if (c1) -1 else +1)*d1(2*i1+1)
       d3(2*i3+0) += x1_re*x2.re - x1_im*x2.im
       d3(2*i3+1) += x1_re*x2.im + x1_im*x2.re
     }
-    override def maddTo(d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
+    override def maddTo(c1: Boolean, d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
       val x1_re = d1(2*i1+0)
-      val x1_im = d1(2*i1+1)
+      val x1_im = (if (c1) -1 else +1)*d1(2*i1+1)
       val x2_re = d2(2*i2+0)
       val x2_im = d2(2*i2+1)
       d3(2*i3+0) += x1_re*x2_re - x1_im*x2_im
@@ -152,14 +153,14 @@ trait GenScalarOps[@specialized(Float, Double) A, @specialized(Float, Double) Ra
   def read(data: Data, i: Int): A
   def write(data: Data, i: Int, x: A)
 
-  def maddTo(d1: Data, i1: Int, x2: A, d3: Data, i3: Int) {
-    val x1 = read(d1, i1)
+  def maddTo(c1: Boolean, d1: Data, i1: Int, x2: A, d3: Data, i3: Int) {
+    val x1 = if (c1) conj(read(d1, i1)) else read(d1, i1)
     val x3 = read(d3, i3)
     write(d3, i3, add(mul(x1, x2), x3))
   }
   
-  def maddTo(d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
-    val x1 = read(d1, i1)
+  def maddTo(c1: Boolean, d1: Data, i1: Int, d2: Data, i2: Int, d3: Data, i3: Int) {
+    val x1 = if (c1) conj(read(d1, i1)) else read(d1, i1)
     val x2 = read(d2, i2)
     val x3 = read(d3, i3)
     write(d3, i3, add(mul(x1, x2), x3))

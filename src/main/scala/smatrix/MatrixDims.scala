@@ -36,9 +36,13 @@ object MatrixDims {
     require((m1 ne ret) && (m2 ne ret), "Illegal aliasing in matrix product.")
   }
   
-  def checkDot(m1: MatrixDims, m2: MatrixDims) {
-    require(m1.numRows == m2.numCols && m1.numCols == m2.numRows,
-        "Cannot take dot product with matrices of shape: Tr([%d, %d] * [%d, %d]).".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
+  def checkDot(dag1: Boolean, m1: MatrixDims, m2: MatrixDims) {
+    if (dag1 == false)
+      require(m1.numRows == m2.numCols && m1.numCols == m2.numRows,
+          "Cannot take dot product with matrices of shape: Tr([%d, %d] * [%d, %d]).".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
+    else
+      require(m1.numRows == m2.numRows && m1.numCols == m2.numCols,
+          "Cannot take dot product with matrices of shape: Tr([%d, %d]^dag * [%d, %d]).".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
   }
   
   def checkTrace(m: MatrixDims) {

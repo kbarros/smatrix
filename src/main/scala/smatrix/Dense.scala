@@ -103,7 +103,7 @@ trait DenseAdders {
       MatrixDims.checkAdd(m, ret)
       for (i <- 0 until ret.numRows;
            j <- 0 until ret.numCols) {
-        ret.scalar.maddTo(m.data, m.index(i, j), alpha, ret.data, ret.index(i, j))
+        ret.scalar.maddTo(false, m.data, m.index(i, j), alpha, ret.data, ret.index(i, j))
       }
     }
   }
@@ -125,7 +125,7 @@ trait DenseMultipliers {
           for (j <- 0 until ret.numCols;
                k <- 0 until m1.numCols;
                i <- 0 until ret.numRows) {
-            s.maddTo(m1.data, i+k*m1.numRows, m2.data, k+j*m2.numRows, ret.data, i+j*ret.numRows)
+            s.maddTo(false, m1.data, i+k*m1.numRows, m2.data, k+j*m2.numRows, ret.data, i+j*ret.numRows)
           }
         }
         else if (ret.numRows > ret.numCols) {
@@ -133,7 +133,7 @@ trait DenseMultipliers {
                k <- 0 until m1.numCols;
                val alpha_m2_kj = s.mul(alpha, s.read(m2.data, k+j*m2.numRows)); 
                i <- 0 until ret.numRows) {
-            s.maddTo(m1.data, i+k*m1.numRows, alpha_m2_kj, ret.data, i+j*ret.numRows)
+            s.maddTo(false, m1.data, i+k*m1.numRows, alpha_m2_kj, ret.data, i+j*ret.numRows)
           }
         }
         else {
@@ -141,7 +141,7 @@ trait DenseMultipliers {
                k <- 0 until m1.numCols;
                val alpha_m1_ik = s.mul(alpha, s.read(m1.data, i+k*m1.numRows)); 
                j <- 0 until ret.numCols) {
-            s.maddTo(m2.data, k+j*m2.numRows, alpha_m1_ik, ret.data, i+j*ret.numRows)
+            s.maddTo(false, m2.data, k+j*m2.numRows, alpha_m1_ik, ret.data, i+j*ret.numRows)
           }
         }
       }
@@ -160,18 +160,27 @@ trait DenseMultipliers {
   }
   
   implicit def denseDenseDotter[S <: Scalar] = new MatrixDotter[S, Dense, Dense] {
-    def dotTo(m1: Dense[S], m2: Dense[S], ret: RawData[S#Raw, S#Buf]) {
-      MatrixDims.checkDot(m1, m2)
+    def dotTo(dag1: Boolean, m1: Dense[S], m2: Dense[S], ret: RawData[S#Raw, S#Buf]) {
+      MatrixDims.checkDot(dag1, m1, m2)
       val s = m1.scalar
       s.write(ret, 0, s.zero)
-      var i = 0
-      while (i < m1.numRows) {
-        var j = 0
-        while (j < m1.numCols) {
-          s.maddTo(m1.data, i + m1.numRows*j, m2.data, j + m2.numRows*i, ret, 0)
-          j += 1
+      if (dag1) {
+        var iter = 0
+        while (iter < m1.numRows * m1.numCols) {
+          s.maddTo(true, m1.data, iter, m2.data, iter, ret, 0)
+          iter += 1
         }
-        i += 1
+      }
+      else {
+        var i = 0
+        while (i < m1.numRows) {
+          var j = 0
+          while (j < m1.numCols) {
+            s.maddTo(false, m1.data, i + m1.numRows*j, m2.data, j + m2.numRows*i, ret, 0)
+            j += 1
+          }
+          i += 1
+        }
       }
     }
   }

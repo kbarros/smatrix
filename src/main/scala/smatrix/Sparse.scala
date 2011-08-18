@@ -179,7 +179,7 @@ trait SparseMultipliersLowPriority {
       for ((i, k) <- m1.definedIndices;
            val alpha_m1_ik = s.mul(alpha, m1(i, k));
            j <- 0 until ret.numCols) {
-        s.maddTo(m2.data, m2.index(k, j), alpha_m1_ik, ret.data, ret.index(i, j))
+        s.maddTo(false, m2.data, m2.index(k, j), alpha_m1_ik, ret.data, ret.index(i, j))
       }
     }
   }
@@ -190,7 +190,7 @@ trait SparseMultipliersLowPriority {
       for ((k, j) <- m2.definedIndices;
            val alpha_m2_kj = s.mul(alpha, m2(k, j));
            i <- 0 until ret.numRows) {
-        s.maddTo(m1.data, m1.index(i, k), alpha_m2_kj, ret.data, ret.index(i, j))
+        s.maddTo(false, m1.data, m1.index(i, k), alpha_m2_kj, ret.data, ret.index(i, j))
       }
     }
   }
@@ -210,7 +210,7 @@ trait SparseMultipliers extends SparseMultipliersLowPriority {
           if (alpha == s.one) {
             var j = 0
             while (j < ret.numCols) {
-              s.maddTo(m2.data, k+j*m2.numRows, m1.data, idx1, ret.data, i+j*ret.numRows)
+              s.maddTo(false, m2.data, k+j*m2.numRows, m1.data, idx1, ret.data, i+j*ret.numRows)
               j += 1
             }
           }
@@ -218,7 +218,7 @@ trait SparseMultipliers extends SparseMultipliersLowPriority {
             val alpha_m1_ik = s.mul(alpha, s.read(m1.data, idx1))
             var j = 0
             while (j < ret.numCols) {
-              s.maddTo(m2.data, k+j*m2.numRows, alpha_m1_ik, ret.data, i+j*ret.numRows)
+              s.maddTo(false, m2.data, k+j*m2.numRows, alpha_m1_ik, ret.data, i+j*ret.numRows)
               j += 1
             }
           }
@@ -241,7 +241,7 @@ trait SparseMultipliers extends SparseMultipliersLowPriority {
           if (alpha == s.one) {
             var i = 0
             while (i < ret.numRows) {
-              s.maddTo(m1.data, i+k*m1.numRows, m2.data, idx2, ret.data, i+j*ret.numRows)
+              s.maddTo(false, m1.data, i+k*m1.numRows, m2.data, idx2, ret.data, i+j*ret.numRows)
               i += 1
             }
           }
@@ -249,7 +249,7 @@ trait SparseMultipliers extends SparseMultipliersLowPriority {
             val alpha_m2_kj = s.mul(alpha, s.read(m2.data, idx2))
             var i = 0
             while (i < ret.numRows) {
-              s.maddTo(m1.data, i+k*m1.numRows, alpha_m2_kj, ret.data, i+j*ret.numRows)
+              s.maddTo(false, m1.data, i+k*m1.numRows, alpha_m2_kj, ret.data, i+j*ret.numRows)
               i += 1
             }
           }

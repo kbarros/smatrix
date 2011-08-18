@@ -87,14 +87,26 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
    */
   def dot[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
       (that: M2[S])(implicit sb: ScalarBuilder[S], md: MatrixDotter[S, M1, M2]): S#A = {
-    MatrixDims.checkDot(this, that)
+    MatrixDims.checkDot(false, this, that)
     val accum = sb.build(1)
-    md.dotTo(this, that, accum)
+    md.dotTo(false, this, that, accum)
     val ret = scalar.read(accum, 0)
     accum.dispose()
     ret
   }
   
+  /** The dot product of the conjugate of this matrix with another, Tr(A^dag B)
+   */
+  def dagDot[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
+      (that: M2[S])(implicit sb: ScalarBuilder[S], md: MatrixDotter[S, M1, M2]): S#A = {
+    MatrixDims.checkDot(true, this, that)
+    val accum = sb.build(1)
+    md.dotTo(true, this, that, accum)
+    val ret = scalar.read(accum, 0)
+    accum.dispose()
+    ret
+  }
+
   /** Adds this matrix with another.
    */
   def +[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2], M3[s <: Scalar] <: Matrix[s, M3]]
@@ -363,7 +375,7 @@ abstract class MatrixMultiplier[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar], M
 abstract class MatrixDotter[S <: Scalar, M1[_ <: Scalar], M2[_ <: Scalar]] {
   /** Assigns `ret = Tr(m1 m2) = \sum_{ij} m1_{ij} m2_{ji}`
    */
-  def dotTo(m1: M1[S], m2: M2[S], ret: RawData[S#Raw, S#Buf])
+  def dotTo(dag1: Boolean, m1: M1[S], m2: M2[S], ret: RawData[S#Raw, S#Buf])
 }
 
 /** Used to resolve the return type for matrix addition and subtraction.  
