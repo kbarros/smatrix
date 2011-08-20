@@ -167,8 +167,8 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
 
   /** Assigns `this := alpha this`. 
    */
-  def *=(alpha: S#A): this.type = {
-    transform(scalar.mul(alpha, _))
+  def *=(x: S#A): this.type = {
+    transform(scalar.mul(_, x))
   }
 
   /** Assigns `this := (1 / alpha) this`. 
@@ -213,7 +213,7 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   def +=*[M1[s <: Scalar] >: Repr[s], M2[s <: Scalar] <: Matrix[s, M2]]
         (alpha: S#A, that: M2[S])
         (implicit ma: MatrixAdder[S, M2, M1]): this.type = {
-    MatrixDims.checkAssign(that, this)
+    MatrixDims.checkAdd(that, this)
     ma.addTo(alpha, that, this)
     this
   }

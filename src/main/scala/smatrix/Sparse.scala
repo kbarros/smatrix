@@ -65,6 +65,24 @@ object PackedSparse {
       }
     }
   }
+  
+  def sameIndices[S <: Scalar](m1: PackedSparse[S], m2: PackedSparse[S]): Boolean = {
+    if (m1.numCols != m2.numCols || m1.numRows != m2.numRows)
+      return false
+    var i = 0
+    while (i < m1.numRows) {
+      if (m1.definedCols(i).size != m2.definedCols(i).size)
+        return false
+      var j = 0
+      while (j < m1.definedCols(i).size) {
+        if (m1.definedCols(i)(j) != m2.definedCols(i)(j))
+          return false
+        j += 1 
+      }
+      i += 1
+    }
+    true
+  }
 }
 
 abstract class PackedSparse[S <: Scalar : ScalarOps]
@@ -146,6 +164,21 @@ trait SparseBuilders {
 
 
 trait SparseAdders {
+
+  implicit def packedAdder[S <: Scalar] = new MatrixAdder[S, PackedSparse, PackedSparse] {
+    def addTo(alpha: S#A, m: PackedSparse[S], ret: PackedSparse[S]) = {
+      MatrixDims.checkAdd(m, ret)
+      require(PackedSparse.sameIndices(m, ret), "Cannot add two PackedSparse matrices with different defined indices.")
+      var idx = 0
+      val nelems = ret.data.size / ret.scalar.components
+      while (idx < nelems) {
+        ret.scalar.maddTo(false, m.data, idx, alpha, ret.data, idx)
+        idx += 1
+      }
+    }
+  }
+
+  
   implicit def sparseSparseAdder[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixAdder[S, M, HashSparse] {
     def addTo(alpha: S#A, m: M[S], ret: HashSparse[S]) = {
       MatrixDims.checkAdd(m, ret)

@@ -15,6 +15,7 @@ object MatrixDims {
   def checkAssign(m1: MatrixDims, m2: MatrixDims) {
     require(m1.numRows == m2.numRows && m1.numCols == m2.numCols,
         "Cannot assign matrices of shape [%d, %d] -> [%d, %d].".format(m1.numRows, m1.numCols, m2.numRows, m2.numCols))
+    require(m1 ne m2, "Illegal aliasing in assignment.")
   }
 
   def checkAdd(m1: MatrixDims, m2: MatrixDims) {

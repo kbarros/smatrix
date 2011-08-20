@@ -67,6 +67,28 @@ class Dense[S <: Scalar : ScalarOps : ScalarBuilder : Netlib](numRows: Int, numC
     for (i <- 0 until numRows*numCols) { scalar.write(data, i, f(scalar.read(data, i))) }
     this
   }
+  
+  override def *=(x: S#A): this.type = {
+    val y = scalar.sub(x, scalar.one)
+    var idx = 0
+    while (idx < numRows*numCols) {
+      // this(i) += this(i)*y = this(i)*(x - 1)
+      scalar.maddTo(false, this.data, idx, y, this.data, idx)
+      idx += 1
+    }
+    this
+  }
+
+  override def /=(x: S#A): this.type = {
+    val y = scalar.sub(scalar.div(scalar.one, x), scalar.one)
+    var idx = 0
+    while (idx < numRows*numCols) {
+      // this(i) += this(i)*y = this(i)*(1/x - 1)
+      scalar.maddTo(false, this.data, idx, y, this.data, idx)
+      idx += 1
+    }
+    this
+  }
 }
 
 
@@ -101,10 +123,16 @@ trait DenseAdders {
   implicit def denseDenseAdder[S <: Scalar] = new MatrixAdder[S, Dense, Dense] {
     def addTo(alpha: S#A, m: Dense[S], ret: Dense[S]) = {
       MatrixDims.checkAdd(m, ret)
-      for (i <- 0 until ret.numRows;
-           j <- 0 until ret.numCols) {
-        ret.scalar.maddTo(false, m.data, m.index(i, j), alpha, ret.data, ret.index(i, j))
+      var idx = 0
+      while (idx < ret.numRows*ret.numCols) {
+        ret.scalar.maddTo(false, m.data, idx, alpha, ret.data, idx)
+        idx += 1
       }
+      
+//      for (i <- 0 until ret.numRows;
+//           j <- 0 until ret.numCols) {
+//        ret.scalar.maddTo(false, m.data, m.index(i, j), alpha, ret.data, ret.index(i, j))
+//      }
     }
   }
   
@@ -152,7 +180,7 @@ trait DenseMultipliers {
             alpha, // alpha
             m1.data.buffer, m1.numRows, // A matrix
             m2.data.buffer, m2.numRows, // B matrix
-            s.zero, // beta
+            s.one, // beta
             ret.data.buffer, ret.numRows // C matrix
         )
       }
