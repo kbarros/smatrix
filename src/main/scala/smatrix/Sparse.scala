@@ -113,6 +113,14 @@ abstract class PackedSparse[S <: Scalar : ScalarOps]
     val idx = definedCols(i).indexOf(j)
     if (idx == -1) None else Some(idx + definedColsAccum(i))
   }
+  
+  def toHash(implicit mb: MatrixBuilder[S, HashSparse]): HashSparse[S] = {
+    val ret = mb.zeros(numRows, numCols)
+    for ((i, j) <- definedIndices) {
+      ret(i, j) = this(i, j)
+    }
+    ret
+  }
 }
 
 
@@ -177,7 +185,6 @@ trait SparseAdders {
       }
     }
   }
-
   
   implicit def sparseSparseAdder[S <: Scalar, M[s <: Scalar] <: Sparse[s, M]] = new MatrixAdder[S, M, HashSparse] {
     def addTo(alpha: S#A, m: M[S], ret: HashSparse[S]) = {
