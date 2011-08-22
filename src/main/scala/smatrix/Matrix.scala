@@ -20,8 +20,9 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   /** Sets the value of this matrix at given row and column indices.
    */
   def update(i: Int, j: Int, x: S#A)
-  
-  /** Modifies this matrix by applying a function to each matrix element.
+    
+  /** Assigns this matrix by applying a function to all matrix elements. For sparse matrices,
+   * the transformation function must preserve zero. 
    */
   def transform(f: S#A => S#A): this.type
   
@@ -39,7 +40,8 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     mb.duplicate(this)
   }
 
-  /** Builds a new matrix by applying a function to all elements of this matrix.
+  /** Builds a new matrix by applying a function to all matrix elements. For sparse matrices,
+   * the transformation must preserve zero.
    */
   // The parameter A2 is for type inference only
   def map[A2, S2 <: Scalar{type A=A2}, That[s <: Scalar] >: Repr[s] <: Matrix[s, That]]
@@ -144,15 +146,14 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
     mm.maddTo(scalar.one, this, that, ret)
     ret
   }
-
-      
+  
   /**
    * Assigns `this := 0`.
    */
   def clear(): this.type = {
     transform(_ => scalar.zero)
   }
-
+  
   /**
    * Assigns this matrix from another.
    */

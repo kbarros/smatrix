@@ -62,7 +62,17 @@ class Dense[S <: Scalar : ScalarOps : ScalarBuilder : Netlib](numRows: Int, numC
       that.numRows, that.numCols, numRows, numCols, j))
     for (i <- 0 until numRows) this(i, j) = that(i, 0)
   }
-   
+  
+  def tabulate(f: (Int, Int) => S#A): this.type = {
+    for (j <- 0 until numCols; i <- 0 until numRows) { this(i, j) = f(i, j) } 
+    this
+  }
+  
+  def fill(f: => S#A): this.type = {
+    for (i <- 0 until numRows*numCols) { scalar.write(data, i, f) }
+    this
+  }
+  
   override def transform(f: S#A => S#A): this.type = {
     for (i <- 0 until numRows*numCols) { scalar.write(data, i, f(scalar.read(data, i))) }
     this

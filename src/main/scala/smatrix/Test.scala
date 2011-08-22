@@ -10,9 +10,9 @@ object Test extends App {
   val m2 = (m+m).map(_.re).map(_ + I)
   
   val n = 500
-  val m3 = tabulate(n, n) { case (i, j) => i + 2*j }
+  val m3 = dense(n, n).tabulate { case (i, j) => i + 2*j }
   val m4 = m3 + m3.tran
-  val x = tabulate(n, 1) { case (i, j) => i }
+  val x = dense(n, 1).tabulate { case (i, j) => i }
   val (v, w) = m3.eig
   println(m3 * w(::,0) / v(0) - w(::,0))
   println("should be zero\n\n")
