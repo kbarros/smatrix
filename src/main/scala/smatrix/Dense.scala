@@ -14,10 +14,14 @@ class Dense[S <: Scalar : ScalarOps : ScalarBuilder : Netlib](numRows: Int, numC
   val netlib: Netlib[S] = implicitly[Netlib[S]]
   val data: RawData[S#Raw, S#Buf] = implicitly[ScalarBuilder[S]].build(numRows*numCols)
   
+  // fortran column major convention
   def index(i: Int, j: Int) = {
     MatrixDims.checkKey(this, i, j)
-    i + j*numRows // fortran column major convention
+    i + j*numRows
   }
+  
+  // fortran column major convention
+  override def definedIndices: Iterable[(Int, Int)] = for (j <- 0 until numCols; i <- 0 until numRows) yield (i, j)
   
   override def apply(i: Int, j: Int): S#A = scalar.read(data, index(i, j))
   def apply(i: Int): S#A = {

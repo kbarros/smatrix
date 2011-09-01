@@ -13,6 +13,12 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   /** A description of the matrix type. */
   val description: String
   
+  /** The matrix indices whose elements may be nonzero. For matrices with packed data buffers, the order
+   * of these indices corresponds to the packing order.
+   * TODO: Replace Iterable with Iterator
+   */
+  def definedIndices: Iterable[(Int, Int)]
+  
   /** Gets the value of this matrix at given row and column indices.
    */
   def apply(i: Int, j: Int): S#A
@@ -29,10 +35,6 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   /** Disposes the memory stored by this matrix, making this matrix invalid (optional).
    */
   def dispose() {}
-  
-  /** The matrix indices whose elements may be nonzero
-   */
-  def definedIndices: Iterable[(Int, Int)] = for (i <- 0 until numRows; j <- 0 until numCols) yield (i, j)
   
   /** Creates a copy of this matrix.
    */
