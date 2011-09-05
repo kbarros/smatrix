@@ -63,6 +63,14 @@ object PackedSparse {
         }
         ret
       }
+      
+      override def transform(f: S#A => S#A): this.type = {
+        require(f(scalar.zero) == scalar.zero, "Sparse transformation function must preserve zero.")
+        for (iter <- 0 until data.size/scalar.components) {
+          scalar.write(data, iter, f(scalar.read(data, iter)))
+        }
+        this
+      }
     }
   }
   
