@@ -28,7 +28,7 @@ class HashSparse[S <: Scalar : ScalarOps](numRows: Int, numCols: Int)
     extends Sparse[S, HashSparse](numRows, numCols) {
   val data = new HashMap[(Int, Int), S#A]()
   override val description = "Sparse Hashtable"
-  override def definedIndices: Iterable[(Int, Int)] = data.keys
+  override def definedIndices: Seq[(Int, Int)] = data.keys.toSeq
   override def apply(i: Int, j: Int): S#A = data.getOrElse((i, j), scalar.zero)
   override def update(i: Int, j: Int, x: S#A) { data((i, j)) = x }
   
@@ -44,7 +44,7 @@ class HashSparse[S <: Scalar : ScalarOps](numRows: Int, numCols: Int)
 
 object PackedSparse {
   def fromIndices[S <: Scalar : ScalarOps : ScalarBuilder]
-      (numRows: Int, numCols: Int, indices: Iterable[(Int, Int)]) : PackedSparse[S] = {
+      (numRows: Int, numCols: Int, indices: Seq[(Int, Int)]) : PackedSparse[S] = {
     new PackedSparse[S](numRows, numCols) {
       override val data = implicitly[ScalarBuilder[S]].build(indices.size)
       override val definedCols = {
@@ -92,7 +92,7 @@ abstract class PackedSparse[S <: Scalar : ScalarOps]
   val definedColsAccum: Array[Int]
   
   override val description = "Sparse Packed"
-  override def definedIndices: Iterable[(Int, Int)] = {
+  override def definedIndices: Seq[(Int, Int)] = {
     for (i <- 0 until numRows; j <- definedCols(i)) yield (i, j)
   }
   override def apply(i: Int, j: Int): S#A = {
@@ -157,7 +157,7 @@ trait SparseBuilders {
       ret
     }
     def transpose(m: PackedSparse[S]): PackedSparse[S] = {
-      val indices = m.definedIndices.map { case (i, j) => (j, i) }
+      val indices = m.definedIndices map { case (i, j) => (j, i) }
       val ret = PackedSparse.fromIndices(m.numCols, m.numRows, indices)
       for ((i, j) <- indices) { ret(i, j) = m(j, i) }
       ret

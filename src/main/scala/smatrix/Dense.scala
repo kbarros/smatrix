@@ -21,7 +21,7 @@ class Dense[S <: Scalar : ScalarOps : ScalarBuilder : Netlib](numRows: Int, numC
   }
   
   // fortran column major convention
-  override def definedIndices: Iterable[(Int, Int)] = for (j <- 0 until numCols; i <- 0 until numRows) yield (i, j)
+  override def definedIndices: Seq[(Int, Int)] = for (j <- 0 until numCols; i <- 0 until numRows) yield (i, j)
   
   override def apply(i: Int, j: Int): S#A = scalar.read(data, index(i, j))
   def apply(i: Int): S#A = {

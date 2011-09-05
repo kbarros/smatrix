@@ -15,9 +15,8 @@ abstract class Matrix[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Matrix[s, R
   
   /** The matrix indices whose elements may be nonzero. For matrices with packed data buffers, the order
    * of these indices corresponds to the packing order.
-   * TODO: Replace Iterable with Iterator
    */
-  def definedIndices: Iterable[(Int, Int)]
+  def definedIndices: Seq[(Int, Int)]
   
   /** Gets the value of this matrix at given row and column indices.
    */
