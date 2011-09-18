@@ -2,7 +2,7 @@ name := "smatrix"
 
 version := "0.1"
 
-scalaVersion := "2.9.1.RC1"
+scalaVersion := "2.9.1"
 
 libraryDependencies ++= Seq(
   "net.java.dev.jna" % "jna" % "3.3.0"
