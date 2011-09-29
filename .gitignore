@@ -8,3 +8,4 @@ project/boot/
 .project
 .scala_dependencies
 .target/
+.cache

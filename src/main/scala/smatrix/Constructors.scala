@@ -2,9 +2,11 @@ package smatrix
 
 
 object Constructors {
+  // TODO: add traits in addition to objects, useful for mix-in
   object realFlt extends Constructors[Scalar.RealFlt]
   object realDbl extends Constructors[Scalar.RealDbl]
   object complexFlt extends Constructors[Scalar.ComplexFlt] {
+    implicit def doubleToFloat(x: Double) = x.toFloat
     implicit def floatToComplexf[T <% Float](re: T) = Complexf(re, 0)
     val I = Complexf(0, 1)
   }

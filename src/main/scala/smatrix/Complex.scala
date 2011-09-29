@@ -34,10 +34,14 @@ case class Complexd(re: Double, im: Double) {
     else if (math.abs(re) < Tol)
       im+"i"
     else {
-      if (im >= 0)
-        re+" + "+im+"i"
-      else
-        re+" - "+(-im)+"i"
+      if (im >= 0) {
+        // re+" + "+im+"i"
+        "%g +%gi".format(re, +im)
+      }
+      else {
+        // re+" - "+(-im)+"i"
+        "%g -%gi".format(re, -im)
+      }
     }
   }
 }

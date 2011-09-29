@@ -95,6 +95,12 @@ object PackedSparse {
 
 abstract class PackedSparse[S <: Scalar : ScalarOps]
     (numRows: Int, numCols: Int) extends Sparse[S, PackedSparse](numRows, numCols) {
+  // The data format is basically compressed sparse row (CSR)
+  // http://en.wikipedia.org/wiki/Sparse_matrix#Compressed_sparse_row_.28CSR_or_CRS.29
+  // 
+  // data is the compressed list of values, row by row
+  // definedCols are the columns for each value (i.e., col_ind)
+  // definedColsAccum are the indices into the values where each row starts (i.e., row_ind)
   val data: RawData[S#Raw, S#Buf]
   val definedCols: Array[Array[Int]]
   val definedColsAccum: Array[Int]
@@ -225,7 +231,7 @@ trait SparseMultipliersLowPriority {
       MatrixDims.checkMulTo(m1, m2, ret)
       val s = ret.scalar
       for ((i, k) <- m1.definedIndices;
-           val alpha_m1_ik = s.mul(alpha, m1(i, k));
+           alpha_m1_ik = s.mul(alpha, m1(i, k));
            j <- 0 until ret.numCols) {
         s.maddTo(false, m2.data, m2.index(k, j), alpha_m1_ik, ret.data, ret.index(i, j))
       }
@@ -236,7 +242,7 @@ trait SparseMultipliersLowPriority {
       MatrixDims.checkMulTo(m1, m2, ret)
       val s = ret.scalar
       for ((k, j) <- m2.definedIndices;
-           val alpha_m2_kj = s.mul(alpha, m2(k, j));
+           alpha_m2_kj = s.mul(alpha, m2(k, j));
            i <- 0 until ret.numRows) {
         s.maddTo(false, m1.data, m1.index(i, k), alpha_m2_kj, ret.data, ret.index(i, j))
       }

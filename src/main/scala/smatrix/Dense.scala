@@ -72,6 +72,12 @@ class Dense[S <: Scalar : ScalarOps : ScalarBuilder : Netlib](numRows: Int, numC
     this
   }
   
+  def copy(a: Array[S#A]): this.type = {
+    require(a.size == numRows*numCols, "Cannot copy array of size %d to matrix of shape [%d, %d]".format(a.size, numRows, numCols))
+    for (i <- 0 until numRows*numCols) { scalar.write(data, i, a(i)) }
+    this
+  }
+  
   def fill(f: => S#A): this.type = {
     for (i <- 0 until numRows*numCols) { scalar.write(data, i, f) }
     this
@@ -173,7 +179,7 @@ trait DenseMultipliers {
         else if (ret.numRows > ret.numCols) {
           for (j <- 0 until ret.numCols;
                k <- 0 until m1.numCols;
-               val alpha_m2_kj = s.mul(alpha, s.read(m2.data, k+j*m2.numRows)); 
+               alpha_m2_kj = s.mul(alpha, s.read(m2.data, k+j*m2.numRows));
                i <- 0 until ret.numRows) {
             s.maddTo(false, m1.data, i+k*m1.numRows, alpha_m2_kj, ret.data, i+j*ret.numRows)
           }
@@ -181,7 +187,7 @@ trait DenseMultipliers {
         else {
           for (i <- 0 until ret.numRows;
                k <- 0 until m1.numCols;
-               val alpha_m1_ik = s.mul(alpha, s.read(m1.data, i+k*m1.numRows)); 
+               alpha_m1_ik = s.mul(alpha, s.read(m1.data, i+k*m1.numRows));
                j <- 0 until ret.numCols) {
             s.maddTo(false, m2.data, k+j*m2.numRows, alpha_m1_ik, ret.data, i+j*ret.numRows)
           }
