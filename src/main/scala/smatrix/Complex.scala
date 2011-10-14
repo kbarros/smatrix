@@ -17,6 +17,9 @@ case class Complexd(re: Double, im: Double) {
   def abs2 = re*re + im*im
   def conj = Complexd(re, -im)
   
+  def toComplexd = this
+  def toComplexf = new Complexf(re.toFloat, im.toFloat)
+  
   override def equals(that : Any) = that match {
     case that : Complexd => re == that.re && im == that.im
     case re : Double => re == re && im == 0
@@ -61,6 +64,9 @@ case class Complexf(re: Float, im: Float) {
   def abs = math.sqrt(abs2)
   def abs2 = re*re + im*im
   def conj = Complexf(re, -im)
+  
+  def toComplexd = new Complexd(re, im)
+  def toComplexf = this
   
   override def equals(that : Any) = that match {
     case that : Complexf => re == that.re && im == that.im
