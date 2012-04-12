@@ -8,15 +8,27 @@ import com.sun.jna.ptr.IntByReference
 
 
 object Netlib {
-  lazy val (cblas, lapack) = {
-    try {
-      val _cblas  = Native.loadLibrary("vecLib", classOf[CblasLib]).asInstanceOf[CblasLib]
-      val _lapack = Native.loadLibrary("vecLib", classOf[LapackLib]).asInstanceOf[LapackLib]
-      (_cblas, _lapack)
-    }
+  def loadOption[A](f: => A): Option[A] = {
+    try { Some(f) }
     catch {
-      case e: UnsatisfiedLinkError => println("**Warning: Could not load native netlib library**"); (null, null)
+      case e: UnsatisfiedLinkError => None
     }
+  }
+  
+  lazy val cblas = {
+    (loadOption(Native.loadLibrary("vecLib", classOf[CblasLib]).asInstanceOf[CblasLib]) getOrElse
+     (loadOption(Native.loadLibrary("acml", classOf[CblasLib]).asInstanceOf[CblasLib]) getOrElse
+      {println("**Warning: Could not load native blas library**"); null}
+     )
+   )
+  }
+  
+  lazy val lapack = {
+    (loadOption(Native.loadLibrary("vecLib", classOf[LapackLib]).asInstanceOf[LapackLib]) getOrElse
+     (loadOption(Native.loadLibrary("acml", classOf[LapackLib]).asInstanceOf[LapackLib]) getOrElse
+      {println("**Warning: Could not load native lapack library**"); null}
+     )
+   )
   }
   
   implicit lazy val RealFlt    = if (cblas == null || lapack == null) null else new NetlibRealFlt
