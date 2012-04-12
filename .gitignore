@@ -3,9 +3,8 @@ target/
 project/boot/
 
 # Eclipse project files
+.cache
 .classpath
 .history
 .project
-.scala_dependencies
-.target/
-.cache
+.settings
