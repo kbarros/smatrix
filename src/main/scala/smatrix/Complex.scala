@@ -11,6 +11,16 @@ case class Complexd(re: Double, im: Double) {
   def -(that: Complexd): Complexd = Complexd(re-that.re, im-that.im)
   def *(that: Complexd): Complexd = Complexd(re*that.re - im*that.im, re*that.im + im*that.re)
   def /(that: Complexd): Complexd = this*that.conj / that.abs2
+
+  def exp = {
+    val a = math.exp(re)
+    Complexd(a * math.cos(im), a * math.sin(im))
+  }
+  def log = {
+    val r2 = re*re + im*im
+    val theta = math.atan2(im, re)
+    Complexd(0.5*math.log(r2), theta)
+  }
   
   def unary_- = Complexd(-re, -im)
   def abs = math.sqrt(abs2)
@@ -59,6 +69,16 @@ case class Complexf(re: Float, im: Float) {
   def -(that: Complexf): Complexf = Complexf(re-that.re, im-that.im)
   def *(that: Complexf): Complexf = Complexf(re*that.re - im*that.im, re*that.im + im*that.re)
   def /(that: Complexf): Complexf = this*that.conj / that.abs2
+
+  def exp = {
+    val a = math.exp(re)
+    Complexf((a * math.cos(im)).toFloat, (a * math.sin(im)).toFloat)
+  }
+  def log = {
+    val r2 = re*re + im*im
+    val theta = math.atan2(im, re)
+    Complexf((0.5*math.log(r2)).toFloat, theta.toFloat)
+  }
   
   def unary_- = Complexf(-re, -im)
   def abs = math.sqrt(abs2)
