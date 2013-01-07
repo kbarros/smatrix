@@ -2,7 +2,7 @@ name := "smatrix"
 
 version := "0.1"
 
-scalaVersion := "2.9.1"
+scalaVersion := "2.10.0"
 
 libraryDependencies ++= Seq(
   "net.java.dev.jna" % "jna" % "3.3.0"
@@ -14,5 +14,6 @@ resolvers ++= Seq(
 
 
 scalacOptions ++= Seq(
-  "-deprecation", "-unchecked"
+  "-deprecation", "-unchecked",
+  "-language:implicitConversions", "-language:higherKinds"
 )
