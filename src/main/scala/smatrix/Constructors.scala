@@ -59,5 +59,12 @@ class Constructors[S <: Scalar] {
     for (i <- 0 until numRows) m(i, i) = m.scalar.one
     m
   }
+  
+  def diag(d: Dense[S])(implicit mb: MatrixBuilder[S, HashSparse]): HashSparse[S] = {
+    require(d.numCols == 1)
+    val m = sparse(d.numRows, d.numRows)
+    for (i <- 0 until d.numRows) m(i, i) = d(i)
+    m
+  }
 }
 
