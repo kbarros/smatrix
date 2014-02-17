@@ -32,11 +32,12 @@ case class Complexd(re: Double, im: Double) {
   
   override def equals(that : Any) = that match {
     case that : Complexd => re == that.re && im == that.im
-    case re : Double => re == re && im == 0
-    case re : Int => re == re && im == 0
-    case re : Short => re == re && im == 0
-    case re : Long => re == re && im == 0
-    case re : Float => re == re && im == 0
+    case that : Complexf => re == that.re && im == that.im
+    case that : Double => re == that && im == 0
+    case that : Float => re == that && im == 0
+    case that : Long => re == that && im == 0
+    case that : Int => re == that && im == 0
+    case that : Short => re == that && im == 0
     case _ => false
   }
   
@@ -89,12 +90,13 @@ case class Complexf(re: Float, im: Float) {
   def toComplexf = this
   
   override def equals(that : Any) = that match {
+    case that : Complexd => re == that.re && im == that.im
     case that : Complexf => re == that.re && im == that.im
-    case re : Double => re == re && im == 0
-    case re : Int => re == re && im == 0
-    case re : Short => re == re && im == 0
-    case re : Long => re == re && im == 0
-    case re : Float => re == re && im == 0
+    case that : Double => re == that && im == 0
+    case that : Float => re == that && im == 0
+    case that : Long => re == that && im == 0
+    case that : Int => re == that && im == 0
+    case that : Short => re == that && im == 0
     case _ => false
   }
   
