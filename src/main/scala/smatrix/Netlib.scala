@@ -5,6 +5,8 @@ import java.nio.{FloatBuffer, DoubleBuffer}
 import com.sun.jna.Library
 import com.sun.jna.Native
 import com.sun.jna.ptr.IntByReference
+import com.sun.jna.ptr.DoubleByReference
+import java.nio.IntBuffer
 
 
 object Netlib {
@@ -29,6 +31,12 @@ object Netlib {
       {println("**Warning: Could not load native lapack library**"); null}
      )
    )
+  }
+  
+  lazy val arpack = {
+    (loadOption(Native.loadLibrary("arpack", classOf[ArpackLib]).asInstanceOf[ArpackLib]) getOrElse
+     {println("**Warning: Could not load native arpack library**"); null}
+    )
   }
   
   implicit lazy val RealFlt    = if (cblas == null || lapack == null) null else new NetlibRealFlt
@@ -298,3 +306,21 @@ trait LapackLib extends Library {
              WORK: DoubleBuffer, LWORK: IntByReference, RWORK: DoubleBuffer, INFO: IntByReference)
 }
 
+trait ArpackLib extends Library {
+  def znaupd_(ido: IntByReference, bmat: String, n: IntByReference, which: String,
+      nev: IntByReference, tol: DoubleByReference, resid: DoubleBuffer,
+      ncv: IntByReference, v: DoubleBuffer, ldv: IntByReference,
+      iparam: IntBuffer, ipntr: IntBuffer, workd: DoubleBuffer,
+      workl: DoubleBuffer, lworkl: IntByReference,
+      rwork: DoubleBuffer, info: IntByReference)
+  
+  def zneupd_(rvec: IntByReference, howmny: String, select: IntBuffer,
+      d: DoubleBuffer, z: DoubleBuffer, ldz: IntByReference,
+      sigma: DoubleBuffer, workev: DoubleBuffer,
+      bmat: String, n: IntByReference, which: String,
+      nev: IntByReference, tol: DoubleByReference, resid: DoubleBuffer,
+      ncv: IntByReference, v: DoubleBuffer, ldv: IntByReference,
+      iparam: IntBuffer, ipntr: IntBuffer, workd: DoubleBuffer,
+      workl: DoubleBuffer, lworkl: IntByReference,
+      rwork: DoubleBuffer, info: IntByReference)
+}

@@ -4,7 +4,7 @@ import collection.mutable.HashMap
 import scala.collection.mutable.ArrayBuffer
 
 
-object Sparse extends SparseBuilders with SparseAdders with SparseMultipliers
+object Sparse extends SparseBuilders with SparseAdders with SparseMultipliers with SparseArpackImplicits
 
 
 abstract class Sparse[S <: Scalar : ScalarOps, +Repr[s <: Scalar] <: Sparse[s, Repr]]
@@ -313,4 +313,121 @@ trait SparseMultipliers extends SparseMultipliersLowPriority {
       }
     }
   }
+}
+
+
+// --------------------------------------
+// Arpack operations
+
+
+trait SparseArpackImplicits {
+  // TODO: Generalize to real/complex with single/double precision
+  // implicit def toSparseRealArpackOps   [S <: Scalar.RealTyp]   (m: PackedSparse[S]) = new SparseRealArpackOps(m)
+  // implicit def toSparseComplexArpackOps[S <: Scalar.ComplexTyp](m: PackedSparse[S]) = new SparseComplexArpackOps(m)
+  implicit def toSparseComplexdArpackOps(m: PackedSparse[Scalar.ComplexDbl]) = new SparseComplexdArpackOps(m)
+}
+
+
+class SparseComplexdArpackOps(self: PackedSparse[Scalar.ComplexDbl]) {
+  import java.nio.{IntBuffer, FloatBuffer, DoubleBuffer}
+  import com.sun.jna.ptr.{IntByReference, DoubleByReference}
+  
+  // Returns column vector of `nev` eigenvalues, and a packed matrix of `nev` right eigenvectors 
+  // Parameter `which` determines which eigenvalues to compute: 
+  //     'LM' -> largest magnitude.
+  //     'SM' -> smallest magnitude.
+  //     'LR' -> largest real part.
+  //     'SR' -> smallest real part.
+  //     'LI' -> largest imaginary part.
+  //     'SI' -> smallest imaginary part.
+  def eig(nev: Int, which: String)(implicit mb: MatrixBuilder[Scalar.ComplexDbl, Dense]): (Dense[Scalar.ComplexDbl], Dense[Scalar.ComplexDbl]) = {
+    def iwrap(i: Int) = new IntByReference(i)
+    def dwrap(x: Double) = new DoubleByReference(x)
+    def ibwrap(a: Array[Int]) = IntBuffer.wrap(a) 
+    def dbwrap(a: Array[Double]) = DoubleBuffer.wrap(a) 
+    
+    val n = self.numRows
+    val shouldCalculateVectors = true 
+
+    require(self.numRows == self.numCols, "Matrix must be square.")
+    require(nev >= 1 && nev < n)
+    require(Set("LM", "SM", "LR", "SR", "LI", "SI") contains which)
+    
+    val arpack = smatrix.Netlib.arpack
+    
+    val ido = iwrap(0)
+    val bmat = "I"
+    val tol = 0.0
+    val resid = new Array[Double](2*n) 
+    val ncv = math.min(4*nev, n)
+    val ldv = n
+    val v = new Array[Double](2*ldv*ncv)
+    val iparam = new Array[Int](11)
+    iparam(0) = 1
+    iparam(2) = 3*n
+    iparam(6) = 1
+    val ipntr = new Array[Int](14)
+    val workd = new Array[Double](2*3*n)
+    val lworkl = 3*ncv*ncv + 5*ncv
+    val workl = new Array[Double](2*lworkl)
+    val rwork = new Array[Double](ncv)
+    val info = iwrap(0)
+    val rvec = if (shouldCalculateVectors) 1 else 0
+    val select = new Array[Int](ncv)
+    val d = new Array[Double](2*ncv) // TODO: according to doc, only need 2*(nev+1)
+    val sigma = new Array[Double](0) // only referenced if (iparam(6) == 3)
+    val workev = new Array[Double](2*3*ncv) // TODO: according to doc, only need 2*2*ncv 
+    
+    do {
+      arpack.znaupd_(ido, bmat, iwrap(n), which, iwrap(nev), dwrap(tol), dbwrap(resid),
+          iwrap(ncv), dbwrap(v), iwrap(ldv), ibwrap(iparam), ibwrap(ipntr), dbwrap(workd),
+          dbwrap(workl), iwrap(lworkl), dbwrap(rwork), info)
+      if (Set(1, -1) contains ido.getValue()) {
+        val in = mb.zeros(n, 1)
+        for (i <- 0 until n) {
+          val in_re = workd(2*(ipntr(0)-1+i)+0)
+          val in_im = workd(2*(ipntr(0)-1+i)+1)
+          in(i) = Complexd(in_re, in_im)
+        }
+        val out = self * in
+        for (i <- 0 until n) {
+          workd(2*(ipntr(1)-1+i)+0) = out(i).re
+          workd(2*(ipntr(1)-1+i)+1) = out(i).im
+        }
+      }
+    } while (Set(1, -1) contains ido.getValue())
+    
+    if (info.getValue < 0) {
+      sys.error(s"Error with znaupd, info = ${info.getValue()}\nCheck documentation in dsaupd")
+    }
+    else {
+      arpack.zneupd_(
+          iwrap(rvec), "A", ibwrap(select), dbwrap(d), dbwrap(v), iwrap(ldv), dbwrap(sigma), dbwrap(workev),
+          bmat, iwrap(n), which, iwrap(nev), dwrap(tol), dbwrap(resid),
+          iwrap(ncv), dbwrap(v), iwrap(ldv), ibwrap(iparam), ibwrap(ipntr), dbwrap(workd),
+          dbwrap(workl), iwrap(lworkl), dbwrap(rwork), info)
+      if (info.getValue != 0) {
+        sys.error(info.getValue match {
+          case 1 => "Maximum number of iterations reached."
+          case 3 => "No shifts could be applied during implicit Arnoldi update, try increasing NCV"
+          case _ => s"Error with zneupd, info = ${info.getValue}"
+        })
+      }
+      else {
+        val evals = mb.zeros(nev, 1)
+        val evecs = mb.zeros(n, nev)
+        for (i <- 0 until nev) {
+          evals(i) = Complexd(d(2*i+0), d(2*i+1))
+        }
+        if (shouldCalculateVectors) {
+          for (i <- 0 until n;
+               j <- 0 until nev) {
+            evecs(i, j) = Complexd(v(2*(j*n+i)+0), v(2*(j*n+i)+1))
+          }
+        }
+        (evals, evecs)
+      }
+    }
+  }
+
 }
