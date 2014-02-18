@@ -1,7 +1,7 @@
 smatrix: *fast matrices in scala*
 =================================
 
-A Scala library for high performance matrix computation, with support for native BLAS and LAPACK libraries.
+A Scala library for high performance matrix computation, with support for native BLAS, LAPACK, and ARPACK libraries.
 
 
 Features
@@ -9,19 +9,19 @@ Features
 
 * Optimized for large dense and sparse matrices (no special support for small matrices nor general tensors).
 
-* Fully integrated complex support. Matrix elements, real or complex, are packed in a JVM array or a native buffer (planned). Heap allocation of matrix elements is avoided when possible.
+* Fully integrated complex support. Matrix elements, real or complex, are packed in a JVM array or a native buffer (planned).
 
-* The only external dependency is [JNA](https://github.com/twall/jna), which is used to call native BLAS and LAPACK libraries. Currently only `vecLib` on OS X is supported.
+* The only external dependency is [JNA](https://github.com/twall/jna), which is used to load netlib libraries.
 
-* Typeclass based design enables user extension, including new matrix representations, matrix operations, and scalar types.
+* Typeclass based design to enable user extension (e.g., matrix representations and operations).
 
-* Natural syntax similar to that of Matlab. In-place matrix operations are also available for performance critical code (planned).
+* DSL syntax similar to that of Matlab.
 
 
 Installation
 ------------
 
-Distribution is currently source only. Get the code from Github. If you want to make smatrix a dependency for your SBT 0.10 project, modify your `Project` definition in the `build/` directory as follows
+Source distribution only. To include from SBT, modify your project definition in the `build/` directory:
 
     object MyBuild extends Build {
       ...
@@ -31,9 +31,9 @@ Distribution is currently source only. Get the code from Github. If you want to 
       lazy val myProject = Project( ... ) dependsOn smatrixProject
     }
 
-For more details on configuration, refer to the [SBT Wiki](https://github.com/harrah/xsbt/wiki/Full-Configuration).
+More details on the [SBT Wiki](https://github.com/harrah/xsbt/wiki/Full-Configuration).
 
-Currently smatrix supports the OS X `vecLib` library for BLAS and LAPACK operations. Support for the open source [ATLAS library](http://math-atlas.sourceforge.net/) is planned. Contact me if you have a specific interest in an alternate library (e.g., Intel MKL).
+Currently I've hardcoded support for `vecLib`, `acml`, and `arpack` native libraries. Others should be easy to add.
 
 
 Usage example
@@ -55,25 +55,21 @@ Usage example
     // -----------------------
     // Sparse Matrices
     
-    val n = 1000000
+    val n = 100000
     val m = sparse(n, n)                       // Create a 1Mx1M sparse matrix backed by a HashMap
     m(1, 2) = 3                                // Fill in some elements
     m(3, 4) = 6 
     val x = tabulate(n, 1)((i, j) => i)        // Create a dense column vector (x_ij = i)
     val y = m * x                              // Sparse-Dense matrix multiplication
-
+    val (evals, evecs) =                       // Arpack calculates smallest eigenvalue/vector
+      h.toPacked.eig(nev=1, which="SR", tol=1e-4)
+    
 
 A Work in Progress
 ------------------
 
-I'm developing smatrix for use in my physics research. Your suggestions and contributions are welcome.
+Still to be done:
 
-**TODO list**
-
-Things to do; to be prioritized by user feedback.
-
-- Get specialization working with parallel "bare" heirarchy
-- Add ATLAS backend; JNA name remapping? Test on Linux
-- Hermitian matrices, perhaps others (Triangular, Tridiagonal, Unitary)
+- Support for special matrices beyond dense and sparse (e.g., Hermitian, tridiagonal, ...)
 - Matrix solvers for sparse matrices (GMRES, BiCGSTAB)
 - Native buffers (GPU implementation?)
