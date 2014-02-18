@@ -340,60 +340,55 @@ class SparseComplexdArpackOps(self: PackedSparse[Scalar.ComplexDbl]) {
   //     'SR' -> smallest real part.
   //     'LI' -> largest imaginary part.
   //     'SI' -> smallest imaginary part.
-  def eig(nev: Int, which: String)(implicit mb: MatrixBuilder[Scalar.ComplexDbl, Dense]): (Dense[Scalar.ComplexDbl], Dense[Scalar.ComplexDbl]) = {
+  def eig(nev: Int, which: String, tol: Double)(implicit mb: MatrixBuilder[Scalar.ComplexDbl, Dense]): (Dense[Scalar.ComplexDbl], Dense[Scalar.ComplexDbl]) = {
     def iwrap(i: Int) = new IntByReference(i)
     def dwrap(x: Double) = new DoubleByReference(x)
     def ibwrap(a: Array[Int]) = IntBuffer.wrap(a) 
-    def dbwrap(a: Array[Double]) = DoubleBuffer.wrap(a) 
     
-    val n = self.numRows
-    val shouldCalculateVectors = true 
-
     require(self.numRows == self.numCols, "Matrix must be square.")
-    require(nev >= 1 && nev < n)
+    require(nev >= 1 && nev < self.numRows)
     require(Set("LM", "SM", "LR", "SR", "LI", "SI") contains which)
-    
     val arpack = smatrix.Netlib.arpack
     
     val ido = iwrap(0)
     val bmat = "I"
-    val tol = 0.0
-    val resid = new Array[Double](2*n) 
+    val n = self.numRows
+    val resid = mb.zeros(n, 1)
     val ncv = math.min(4*nev, n)
     val ldv = n
-    val v = new Array[Double](2*ldv*ncv)
+    val v = mb.zeros(ldv*ncv, 1)
     val iparam = new Array[Int](11)
     iparam(0) = 1
     iparam(2) = 3*n
     iparam(6) = 1
     val ipntr = new Array[Int](14)
-    val workd = new Array[Double](2*3*n)
+    val workd = mb.zeros(3*n, 1)
     val lworkl = 3*ncv*ncv + 5*ncv
-    val workl = new Array[Double](2*lworkl)
-    val rwork = new Array[Double](ncv)
+    val workl = mb.zeros(lworkl, 1)
+    val rwork = mb.zeros(ncv, 1) // real array overallocated by factor of 2
     val info = iwrap(0)
-    val rvec = if (shouldCalculateVectors) 1 else 0
+    val rvec = 1
+    val howmny = "A"
     val select = new Array[Int](ncv)
-    val d = new Array[Double](2*ncv) // TODO: according to doc, only need 2*(nev+1)
-    val sigma = new Array[Double](0) // only referenced if (iparam(6) == 3)
-    val workev = new Array[Double](2*3*ncv) // TODO: according to doc, only need 2*2*ncv 
+    val d = mb.zeros(nev+1, 1)
+    val sigma = mb.zeros(1, 1) // not referenced
+    val workev = mb.zeros(2*ncv, 1)
     
+    var iters = 0
     do {
-      arpack.znaupd_(ido, bmat, iwrap(n), which, iwrap(nev), dwrap(tol), dbwrap(resid),
-          iwrap(ncv), dbwrap(v), iwrap(ldv), ibwrap(iparam), ibwrap(ipntr), dbwrap(workd),
-          dbwrap(workl), iwrap(lworkl), dbwrap(rwork), info)
+      arpack.znaupd_(ido, bmat, iwrap(n), which, iwrap(nev), dwrap(tol), resid.data.buffer,
+          iwrap(ncv), v.data.buffer, iwrap(ldv), ibwrap(iparam), ibwrap(ipntr), workd.data.buffer,
+          workl.data.buffer, iwrap(lworkl), rwork.data.buffer, info)
       if (Set(1, -1) contains ido.getValue()) {
         val in = mb.zeros(n, 1)
         for (i <- 0 until n) {
-          val in_re = workd(2*(ipntr(0)-1+i)+0)
-          val in_im = workd(2*(ipntr(0)-1+i)+1)
-          in(i) = Complexd(in_re, in_im)
+          in(i) = workd(ipntr(0)-1+i)
         }
-        val out = self * in
+        val out = self*in
         for (i <- 0 until n) {
-          workd(2*(ipntr(1)-1+i)+0) = out(i).re
-          workd(2*(ipntr(1)-1+i)+1) = out(i).im
+          workd(ipntr(1)-1+i) = out(i)
         }
+        iters += 1
       }
     } while (Set(1, -1) contains ido.getValue())
     
@@ -401,11 +396,13 @@ class SparseComplexdArpackOps(self: PackedSparse[Scalar.ComplexDbl]) {
       sys.error(s"Error with znaupd, info = ${info.getValue()}\nCheck documentation in dsaupd")
     }
     else {
+      // println(s"Converged after $iters iterations")
       arpack.zneupd_(
-          iwrap(rvec), "A", ibwrap(select), dbwrap(d), dbwrap(v), iwrap(ldv), dbwrap(sigma), dbwrap(workev),
-          bmat, iwrap(n), which, iwrap(nev), dwrap(tol), dbwrap(resid),
-          iwrap(ncv), dbwrap(v), iwrap(ldv), ibwrap(iparam), ibwrap(ipntr), dbwrap(workd),
-          dbwrap(workl), iwrap(lworkl), dbwrap(rwork), info)
+          iwrap(rvec), howmny, ibwrap(select), d.data.buffer, v.data.buffer,
+          iwrap(ldv), sigma.data.buffer, workev.data.buffer,
+          bmat, iwrap(n), which, iwrap(nev), dwrap(tol), resid.data.buffer,
+          iwrap(ncv), v.data.buffer, iwrap(ldv), ibwrap(iparam), ibwrap(ipntr), workd.data.buffer,
+          workl.data.buffer, iwrap(lworkl), rwork.data.buffer, info)
       if (info.getValue != 0) {
         sys.error(info.getValue match {
           case 1 => "Maximum number of iterations reached."
@@ -417,17 +414,14 @@ class SparseComplexdArpackOps(self: PackedSparse[Scalar.ComplexDbl]) {
         val evals = mb.zeros(nev, 1)
         val evecs = mb.zeros(n, nev)
         for (i <- 0 until nev) {
-          evals(i) = Complexd(d(2*i+0), d(2*i+1))
+          evals(i) = d(i)
         }
-        if (shouldCalculateVectors) {
-          for (i <- 0 until n;
-               j <- 0 until nev) {
-            evecs(i, j) = Complexd(v(2*(j*n+i)+0), v(2*(j*n+i)+1))
-          }
+        for (i <- 0 until n;
+             j <- 0 until nev) {
+          evecs(i, j) = v(j*n+i)
         }
         (evals, evecs)
       }
     }
   }
-
 }

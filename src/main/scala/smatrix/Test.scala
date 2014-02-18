@@ -42,14 +42,14 @@ object Test extends App {
       h(i, j) += r
       h(j, i) += r.conj
     }
-    h
+    h.toPacked
   }
   
   def testArpack() {
     val h = randomSparse(500, 4)
     
-    val (evals0, evecs0) = h.toPacked.eig(1, "SR")
-    val (evals1, evecs1) = h.toPacked.eig(1, "LR")
+    val (evals0, evecs0) = h.eig(nev=1, which="SR", tol=0)
+    val (evals1, evecs1) = h.eig(nev=1, which="LR", tol=0)
     
     val evalsFull = h.toDense.eig._1.toArray.sortBy(_.re)
     
@@ -60,13 +60,13 @@ object Test extends App {
   }
   
   def testArpackSpeed() {
-    val n = 10000
+    val n = 50000
     println(s"Building ${n}x${n} matrix")
     val h = randomSparse(n, 4)
     
     print("Calculating min eigenvalue...")
     val t1 = System.currentTimeMillis()
-    val (evals0, evecs0) = h.toPacked.eig(1, "SR")
+    val (evals0, evecs0) = h.eig(nev=1, which="SR", tol=1e-4)
     val t2 = System.currentTimeMillis()
     println(s"done. Elapsed time ${(t2-t1)/1000.0}s")
     
